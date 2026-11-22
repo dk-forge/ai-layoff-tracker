@@ -67,7 +67,7 @@ def fixture():
 def section(text, heading):
     """The lines under one heading, up to the next blank line."""
     body = text.split("\n" + heading + "\n", 1)[1]
-    return body.split("\n\n", 1)[0]
+    return body.split("\nHow we count\n", 1)[0].split("\n\n", 1)[0]
 
 
 @unittest.skipIf(PHP is None, "php is not on PATH. UNKNOWN, not a pass.")
@@ -87,7 +87,8 @@ class DailyHumanFirst(unittest.TestCase):
     def test_hiring_leads_and_total_is_one_context_line(self):
         # Superseded 2026-11-06: the glance box now sits above the lead line,
         # and the context line is "Separately, ..." (test_digest_talent_daily_glance).
-        self.assertIn("\n7 hiring signals, led by Cohere", self.text)
+        self.assertIn("Cohere leads the announced hiring plans in this update.", self.text)
+        self.assertIn("Hiring signals: 7", self.text)
         # Superseded 2026-11-11: the employer-activity count is said once, in the glance.
         # Reworded 2026-11-12 ("Other employer news"), still said once.
         self.assertEqual(self.text.count("Other employer news: 2 ("), 1)

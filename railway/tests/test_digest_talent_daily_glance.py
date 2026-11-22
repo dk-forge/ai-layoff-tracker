@@ -60,19 +60,22 @@ class Glance(unittest.TestCase):
         cls.text = cls.out["text"]
         cls.html = cls.out["html"]
 
-    def test_glance_box_leads_with_the_four_facts(self):
+    def test_glance_has_three_facts_and_method_keeps_the_count_basis(self):
         self.assertIn('data-alt="glance"', self.html)
         head = self.text.split("Announced hiring plans", 1)[0]
         self.assertIn("At a glance (Nov 2-3)", head)
+        self.assertIn("Hiring signals: 7", head)
+        self.assertIn("Open roles tracked: not available", head)
+        method = self.text.split("How we count\n", 1)[1]
         # Reworded 2026-11-12: each number says what it is, and they add up.
-        self.assertIn("All signals: 9 = 7 about hiring + 2 other employer news", head)
-        self.assertIn("Hiring: 7 (4 announced plans, 3 job-board changes)", head)
-        self.assertIn("Other employer news: 2 (funding, leadership, sites and pay, from 2 employers; not hiring counts)", head)
+        self.assertIn("All signals: 9 = 7 about hiring + 2 other employer news", method)
+        self.assertIn("Hiring: 7 (4 announced plans, 3 job-board changes)", method)
+        self.assertIn("Other employer news: 2 (funding, leadership, sites and pay, from 2 employers; not hiring counts)", method)
         self.assertIn("Biggest announced plan: Cohere, 1,500 roles in Toronto (one report: MobileSyrup)", head)
-        self.assertIn("Leading region: North America, 4 signals", head)
+        self.assertIn("Leading region: North America, 4 signals", method)
 
     def test_three_types_defined_under_the_box(self):
-        head = self.text.split("Announced hiring plans\n", 1)[0]
+        head = self.text.split("How we count\n", 1)[1]
         for line in ("Announced hiring plans: roles an employer or report says it will add.",
                      "Job-board changes: net new open roles on an employer's own careers board since our last scan."):
             self.assertIn(line, head)

@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "talent-email-2847",
+   "date": "2026-11-22",
+   "version": "2.20.358",
+   "type": "Fix",
+   "area": "email",
+   "text": "The daily talent email opens with one headline, three clearly labelled numbers and a free resume match button. Repeated reports of the same hiring plan share one employer line with all source links. Raw signal totals and the distinction between announced plans and open listings are retained."
+  },
+  {
    "slug": "undeclared-countries-2026-11-19",
    "date": "2026-11-19",
    "version": "2.20.357",

@@ -93,7 +93,7 @@ class SingleSourceNeverLeadsTheSubject(unittest.TestCase):
     def test_the_body_labels_the_single_source(self):
         text = compose(fixture())["text"]
         self.assertIn("Biggest announced plan: Salute, 12,000 roles in United States (one report: Fox Business)", text)
-        self.assertIn("led by Salute (plans 12,000 roles in United States, one report)", text)
+        self.assertIn("Salute leads the announced hiring plans in this update.", text)
 
     def test_a_second_publisher_lets_the_number_lead(self):
         second = row(20, "Salute", "US", 12000, host="www.datacenterknowledge.com", source="DCK")
@@ -122,7 +122,7 @@ class BoardChangeIsNotBoardSize(unittest.TestCase):
 class GlanceAddsUp(unittest.TestCase):
 
     def test_the_counts_are_named_and_sum(self):
-        head = compose(fixture())["text"].split("Announced hiring plans\n", 1)[0]
+        head = compose(fixture())["text"].split("How we count\n", 1)[1].split("\nNotes\n", 1)[0]
         self.assertIn("All signals: 12 = 9 about hiring + 3 other employer news", head)
         self.assertIn("Hiring: 9 (6 announced plans, 3 job-board changes)", head)
         self.assertIn("Other employer news: 3 (funding, leadership, sites and pay, from 3 employers; not hiring counts)", head)
