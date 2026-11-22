@@ -16,6 +16,8 @@ from urllib.parse import unquote, urljoin, urlsplit
 ORIGIN = "https://asktherecruiter.com"
 CTA = (ORIGIN + "/?start=1&utm_source=ai-layoff-tracker&utm_medium=referral"
        "&utm_campaign=static_tracker#start-intake")
+TRACKER_URL = ORIGIN + "/blog/ai-layoff-tracker/"
+TRACKER_DATA_PATH = "blog/static-assets/tracker-data.json"
 ASSETS = Path(__file__).with_name("static_site_assets")
 FIELDS = ("company", "date", "country", "jobs", "source_url")
 BODY_TAGS = set("h1 h2 h3 h4 h5 h6 p div section article aside header footer main nav span strong em b i small abbr u sup sub ol ul li dl dt dd table thead tbody tfoot tr th td caption colgroup col figure figcaption img details summary blockquote q cite pre code br hr time a".split())
@@ -184,8 +186,31 @@ def records_table(rows: list[dict]) -> str:
     return "".join(parts)
 
 
-def render(page: dict) -> str:
+def tracker_panel() -> str:
+    selects = "".join(
+        f'<label>{label} <select name="{key}" multiple size="4"></select></label>'
+        for key, label in (("country", "Country"), ("industry", "Industry"),
+                           ("state", "US state"), ("source_type", "Source type"))
+    )
+    return (
+        f'<section data-tracker="/{TRACKER_DATA_PATH}"><h2>Search layoff records</h2>'
+        '<form class="tracker-filters" hidden><label>Company <input type="search" name="search"></label>'
+        '<label>From <input type="date" name="from"></label><label>To <input type="date" name="to"></label>'
+        f'{selects}<label><input type="checkbox" name="ai"> AI explicitly cited</label>'
+        '<button type="submit">Apply filters</button></form>'
+        '<p role="status">Loading tracker data.</p><h3>Jobs by month</h3><ul data-chart></ul>'
+        '<div class="table-wrap"><table><thead><tr><th scope="col">Company</th>'
+        '<th scope="col">Date</th><th scope="col">Country</th><th scope="col">Jobs</th>'
+        '<th scope="col">Source</th></tr></thead><tbody></tbody></table></div>'
+        '<button type="button" data-more hidden>Show 50 more records</button>'
+        '<noscript>Enable JavaScript to use tracker filters and charts.</noscript></section>'
+        '<script type="module" src="/blog/static-assets/tracker.mjs"></script>'
+    )
+
+
+def render(page: dict, *, tracker: bool = False) -> str:
     esc = html.escape
+    content = tracker_panel() if tracker else records_table(page.get("rows", []))
     nodes = []
     for node in page["schema"]:
         encoded = json.dumps(node, ensure_ascii=True).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
@@ -199,13 +224,21 @@ def render(page: dict) -> str:
             '<link rel="stylesheet" href="/blog/static-assets/site.css">'
             + "".join(nodes) + '</head><body><header><a href="/blog/ai-layoff-tracker/">AI Layoff Tracker</a>'
             f'<a class="match-cta" data-match-cta="true" href="{esc(CTA, quote=True)}">Check my match, free</a>'
-            f'</header><main>{page["body"]}{records_table(page.get("rows", []))}</main>'
+            f'</header><main>{page["body"]}{content}</main>'
             '<script src="/blog/static-assets/site.js" defer></script></body></html>')
 
 
-def build(snapshot: Path, output: Path) -> int:
+def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int:
     data, files = load_snapshot(snapshot)
     validate_pages(data, files)
+    if tracker_data is not None:
+        projection = json.loads(tracker_data.read_text(encoding="utf-8"))
+        if (projection.get("schema") != 1 or not projection.get("exported_at")
+                or not isinstance(projection.get("records"), list)
+                or not projection["records"]):
+            raise ValueError("expected a populated static tracker data projection")
+        if not any(page["url"] == TRACKER_URL for page in data["pages"]):
+            raise ValueError("snapshot needs the main tracker page to use tracker data")
     if output.exists():
         raise ValueError("output already exists; choose a clean build directory")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -219,8 +252,11 @@ def build(snapshot: Path, output: Path) -> int:
         for page in data["pages"]:
             dest = stage / output_path(page["url"], page=True)
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(render(page), encoding="utf-8")
+            tracker = tracker_data is not None and page["url"] == TRACKER_URL
+            dest.write_text(render(page, tracker=tracker), encoding="utf-8")
         shutil.copytree(ASSETS, stage / "blog/static-assets")
+        if tracker_data is not None:
+            shutil.copyfile(tracker_data, stage / TRACKER_DATA_PATH)
         os.replace(stage, output)
     return len(data["pages"])
 
@@ -229,8 +265,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--snapshot", type=Path, required=True)
     parser.add_argument("--out", type=Path, default=Path("dist"))
+    parser.add_argument("--tracker-data", type=Path, help="verified output from static_data.py")
     args = parser.parse_args(argv)
-    print(f"Built {build(args.snapshot, args.out)} pages from the supplied public snapshot")
+    print(f"Built {build(args.snapshot, args.out, args.tracker_data)} pages from the supplied public snapshot")
 
 
 if __name__ == "__main__":

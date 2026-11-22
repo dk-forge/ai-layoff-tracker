@@ -7,6 +7,7 @@ on:
       - 'railway/static_data.py'
       - 'railway/backup_tables.py'
       - 'railway/tests/test_static_data.py'
+      - 'railway/tests/test_tracker.mjs'
       - 'railway/static_site_assets/**'
       - 'railway/tests/test_static_site.py'
       - 'static-site/data/**'
@@ -37,6 +38,12 @@ jobs:
       - name: Test the offline build contract
         working-directory: railway
         run: python -m unittest tests.test_static_site tests.test_static_data -v
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test tracker filtering and charts
+        run: node --test railway/tests/test_tracker.mjs
 
   build:
     if: github.event_name != 'pull_request' && inputs.backup_tag == ''
