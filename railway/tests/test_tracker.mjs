@@ -20,3 +20,16 @@ test("the chart excludes overlapping counts while the table keeps their records"
   assert.equal(filterRecords(records, {}).length, 3);
   assert.deepEqual(jobsByMonth(records), [["2026-01", 20], ["2026-02", 40]]);
 });
+
+test("exports preserve the filtered set and escape spreadsheet formulas", async () => {
+  const { trackerExport } = await import("../static_site_assets/tracker.mjs");
+  const selected = [{ ...records[0], company: ' =SUM(1,2)"', source_url: "https://example.com" }];
+  const csv = trackerExport("csv", selected, "2026-11-22T06:44:13Z");
+  assert.match(csv, /"' =SUM\(1,2\)"""/);
+  assert.match(csv, /AI Layoff Tracker/);
+  assert.doesNotMatch(csv, /Other/);
+  const json = JSON.parse(trackerExport("json", selected, "2026-11-22T06:44:13Z"));
+  assert.deepEqual(json.data, selected);
+  assert.equal(json.total_records, 1);
+  assert.equal(json.exported_at, "2026-11-22T06:44:13Z");
+});

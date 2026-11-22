@@ -20,6 +20,43 @@ export function jobsByMonth(records) {
   return [...totals].sort(([left], [right]) => left.localeCompare(right));
 }
 
+const attribution = "AI Layoff Tracker - asktherecruiter.com";
+const exportFields = [
+  "company", "job_count", "layoff_date", "announcement_date", "industry", "country",
+  "state", "source_type", "verification_level", "source_url", "ai_explicit", "superset_of",
+];
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  const safe = /^(?:[\t\r\n]|\s*[=+@-])/.test(text) ? "'" + text : text;
+  return '"' + safe.replaceAll('"', '""') + '"';
+}
+
+export function trackerExport(format, records, exportedAt) {
+  if (format === "json") {
+    return JSON.stringify({
+      source: attribution,
+      license: "Free to use with attribution to asktherecruiter.com.",
+      exported_at: exportedAt, data: records, total_records: records.length,
+    });
+  }
+  const lines = [[...exportFields, "exported_at", "source_attribution"].join(",")];
+  for (const row of records) {
+    lines.push([...exportFields.map((key) => row[key]), exportedAt, attribution].map(csvCell).join(","));
+  }
+  return "\uFEFF" + lines.join("\r\n") + "\r\n";
+}
+
+function download(format, records, exportedAt) {
+  const type = format === "csv" ? "text/csv;charset=utf-8" : "application/json";
+  const url = URL.createObjectURL(new Blob([trackerExport(format, records, exportedAt)], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `ai-layoff-tracker.${format}`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function renderChart(root, records) {
   const months = jobsByMonth(records).slice(-24);
   const max = Math.max(1, ...months.map(([, total]) => total));
@@ -67,11 +104,15 @@ async function start(section) {
   }
   const more = section.querySelector("[data-more]");
   let limit = 50;
+  let filtered = [];
+  for (const button of form.querySelectorAll("[data-export]")) {
+    button.addEventListener("click", () => download(button.dataset.export, filtered, data.exported_at));
+  }
   const update = () => {
     const input = new FormData(form);
     const query = Object.fromEntries(input);
     for (const select of filters) query[select.name] = input.getAll(select.name);
-    const filtered = filterRecords(records, query);
+    filtered = filterRecords(records, query);
     renderRows(section.querySelector("tbody"), filtered.slice(0, limit));
     renderChart(section.querySelector("[data-chart]"), filtered);
     more.hidden = filtered.length <= limit;
