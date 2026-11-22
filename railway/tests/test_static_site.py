@@ -134,6 +134,24 @@ class StaticSite(unittest.TestCase):
                     self.build()
                 self.assertFalse(self.output.exists())
 
+    def test_truncated_html_tokens_never_join_generated_markup(self):
+        for index, ending in enumerate(('<script src="https://example.org/legacy.js" ',
+                                         '<a href="https://example.org/', '<!-- unfinished')):
+            with self.subTest(ending=ending):
+                self.output = self.root / f"output-{index}"
+                self.manifest["pages"][0]["body"] = "<h1>Title</h1>" + ending
+                with self.assertRaisesRegex(ValueError, "incomplete HTML"):
+                    self.build()
+                self.assertFalse(self.output.exists())
+
+    def test_normalized_file_destinations_cannot_overwrite_each_other(self):
+        self.files["other.xml"] = b"different recorded bytes"
+        item = self.file("other.xml", "/blog/%73itemap.xml")
+        self.manifest["files"].append(item)
+        with self.assertRaisesRegex(ValueError, "duplicate normalized"):
+            self.build()
+        self.assertFalse(self.output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

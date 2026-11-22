@@ -73,11 +73,14 @@ def load_snapshot(path: Path) -> tuple[dict, dict[str, bytes]]:
         raise ValueError("snapshot needs schema, captured_at and source_revision")
     if not data.get("pages") or not data.get("sitemaps"):
         raise ValueError("snapshot needs pages and independent baseline sitemaps")
-    files = {}
+    files, destinations = {}, set()
     root = path.parent.resolve()
     for item in data.get("files", []):
         url = item["url"]
-        output_path(url)
+        destination = output_path(url)
+        if destination in destinations:
+            raise ValueError(f"duplicate normalized snapshot destination: {url}")
+        destinations.add(destination)
         source = (root / item["source"]).resolve()
         if not source.is_relative_to(root) or not source.is_file():
             raise ValueError("snapshot source escapes input directory or is missing")
@@ -138,6 +141,9 @@ def validate_pages(data: dict, files: dict[str, bytes]) -> None:
             raise ValueError("schema must record the original JSON-LD node list")
         audit = BodyAudit()
         audit.feed(page["body"])
+        if audit.rawdata:
+            raise ValueError(f"incomplete HTML fragment: {url}")
+        audit.close()
         if audit.h1s != 1:
             raise ValueError(f"page needs exactly one captured h1: {url}")
         for source in audit.resources:

@@ -4,7 +4,7 @@ date: 2026-11-22
 type: feat
 area: static-site
 files: railway/static_site.py, railway/static_site_assets, .github/workflows/static-site.yml, docs/STATIC_MIGRATION.md, docs/STATIC_SNAPSHOT.md
-tests: Seven offline builder tests, workflow and test-group contracts, synthetic browser checks at 390px and 1280px
+tests: Nine offline builder tests, workflow and test-group contracts, synthetic browser checks at 390px and 1280px
 rollback: Revert this build-only change; the deployed WordPress site is unchanged
 env: none
 ---
