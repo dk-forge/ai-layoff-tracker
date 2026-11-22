@@ -152,6 +152,17 @@ class StaticSite(unittest.TestCase):
             self.build()
         self.assertFalse(self.output.exists())
 
+    def test_comments_and_declarations_cannot_hide_active_content(self):
+        fragments = ('<!--><script>alert(1)</script>-->', '<!-- harmless -->',
+                     '<!DOCTYPE html>', '<?xml version="1.0"?>')
+        for index, fragment in enumerate(fragments):
+            with self.subTest(fragment=fragment):
+                self.output = self.root / f"markup-{index}"
+                self.manifest["pages"][0]["body"] = "<h1>Title</h1>" + fragment
+                with self.assertRaises(ValueError):
+                    self.build()
+                self.assertFalse(self.output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

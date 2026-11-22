@@ -34,7 +34,9 @@ Each page records:
   without changing the decoded node values.
 - `body`: public, static HTML with exactly one h1. Preserve the published copy.
   Scripts, forms, iframes, SVG, inline handlers and legacy WordPress API calls
-  fail validation. They require migration, not silent removal.
+  fail validation. They require migration, not silent removal. The capture
+  publisher must omit comments and document declarations from body fragments;
+  these are rejected because browser comment parsing differs from HTMLParser.
 - `rows`, optionally: an already-curated public list with exactly `company`,
   `date`, `country`, `jobs`, `source_url`. These are page-scoped published
   records. The builder does not infer canonical membership, deduplicate raw

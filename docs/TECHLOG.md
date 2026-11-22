@@ -10,7 +10,7 @@ production data. No host request, deployment, email or DNS change was performed.
 **Class:** absent-read-as-ok
 **Guard:** railway/tests/test_static_site.py rejects missing sitemap pages,
 missing metadata, changed assets, truncated HTML, normalized file collisions,
-active content and path escapes before dist
+comments/declarations, active content and path escapes before dist
 exists. Synthetic 390px/1280px browser checks verify the tracked CTA and search;
 they do not measure the deployed site.
 

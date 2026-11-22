@@ -66,6 +66,15 @@ class BodyAudit(HTMLParser):
 
     handle_startendtag = handle_starttag
 
+    def handle_comment(self, data):
+        raise ValueError("HTML comments must be removed from captured fragments")
+
+    def handle_decl(self, data):
+        raise ValueError("HTML declarations are not supported in captured fragments")
+
+    handle_pi = handle_decl
+    unknown_decl = handle_decl
+
 
 def load_snapshot(path: Path) -> tuple[dict, dict[str, bytes]]:
     data = json.loads(path.read_text(encoding="utf-8"))
