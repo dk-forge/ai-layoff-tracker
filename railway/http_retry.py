@@ -24,11 +24,6 @@ breakable by dependency resolution. `requests` is therefore an OPTIONAL import,
 so this module loads on a runner that has no third-party packages.
 """
 
-try:
-    import blog_read_cache as blog_reads
-except ModuleNotFoundError:
-    from railway import blog_read_cache as blog_reads
-
 import json
 import re
 import time
@@ -161,6 +156,10 @@ def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backo
     collector pass its own module-level `requests.get`, so a test that patches
     `collector.requests.get` keeps seeing every attempt. `sleep` is for tests.
     """
+    try:
+        import blog_read_cache as blog_reads
+    except ModuleNotFoundError:
+        from railway import blog_read_cache as blog_reads
     if get is None:
         if requests is None:  # pragma: no cover - a caller mistake, not a host fault
             raise RuntimeError("get_with_retry needs `requests`; the stdlib-only "
