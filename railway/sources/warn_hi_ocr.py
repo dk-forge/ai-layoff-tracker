@@ -17,6 +17,11 @@ in an environment without pytesseract/tesseract.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import os
 import re
 import time
@@ -237,7 +242,7 @@ def _hi_notices(years):
     for year in years:
         url = _HI_YEAR_URL.format(year=year)
         try:
-            resp = requests.get(url, headers=UA, timeout=TIMEOUT)
+            resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT)
             if resp.status_code != 200:
                 continue
             html_text = re.sub(r"<script.*?</script\b[^>]*>", "", resp.text, flags=re.S | re.I)
@@ -377,7 +382,7 @@ def fetch_hi_ocr(years=None, limit=None, dry_run=False, deadline_seconds=None,
                 DEADLINE_TRUNCATED = True
                 break
         try:
-            resp = requests.get(url, headers=UA, timeout=TIMEOUT)
+            resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT)
             if resp.status_code != 200 or not resp.content[:4] == b"%PDF":
                 skipped.append((date, company, url, f"pdf_unreachable({resp.status_code})"))
                 continue

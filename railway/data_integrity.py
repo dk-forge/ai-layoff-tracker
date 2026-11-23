@@ -126,6 +126,11 @@ USAGE
                                                  # advance headline_baseline.json
                                                  # (never over a FAILING slice)
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import re
 import sys
@@ -3151,7 +3156,7 @@ class Report:
 def _default_fetch(url, timeout):
     req = urllib.request.Request(url, headers={"User-Agent": UA,
                                                "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with blog_reads.urlopen(req, timeout=timeout) as r:
         return r.read()
 
 

@@ -6,6 +6,7 @@ from datetime import date, timedelta
 
 import requests
 
+import blog_read_cache as blog_reads
 import gdelt_backfill
 import http_retry
 
@@ -36,8 +37,8 @@ def _api(path, method="GET", payload=None, attempts=3, sleep=None):
     last = None
     for attempt in range(attempts):
         try:
-            response = requests.request(
-                method, f"{site}/wp-json/layoffs/v1/{path}", json=payload,
+            response = blog_reads.request(
+                method, f"{site}/wp-json/layoffs/v1/{path}", requester=requests.request, json=payload,
                 headers={"X-Layoff-API-Key": key, "User-Agent": UA}, timeout=30)
             if response.status_code in TRANSIENT:
                 last = requests.HTTPError(f"HTTP {response.status_code} from {path}",

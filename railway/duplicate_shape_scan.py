@@ -69,6 +69,11 @@ its own output rather than left to be assumed.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import json
 import sys
@@ -144,7 +149,7 @@ def _http_fetch(params):
     req = urllib.request.Request(
         f"{BASE}/query?{query}",
         headers={"User-Agent": UA, "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=90) as resp:
+    with blog_reads.urlopen(req, timeout=90) as resp:
         body = resp.read()
     try:
         return json.loads(body.decode("utf-8", "replace"))

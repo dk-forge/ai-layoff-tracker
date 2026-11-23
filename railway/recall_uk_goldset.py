@@ -39,6 +39,11 @@ USAGE
     python3 railway/recall_uk_goldset.py            # measure, print, exit 0/2/3
     python3 railway/recall_uk_goldset.py --write    # also write the measurement
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import sys
 import urllib.parse
@@ -80,7 +85,7 @@ MAX_MEASUREMENT_AGE_DAYS = 9
 def _default_fetch(url, timeout=30):
     req = urllib.request.Request(url, headers={"User-Agent": UA,
                                                "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with blog_reads.urlopen(req, timeout=timeout) as r:
         return r.read()
 
 

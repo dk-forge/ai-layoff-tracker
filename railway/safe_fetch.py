@@ -44,6 +44,12 @@ URL, and the mitigation is that both fetches are read-only and their output is
 gated downstream; if this module ever fronts something that writes, that is the
 day to pin the socket.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import ipaddress
 import socket
 import time
@@ -217,7 +223,7 @@ def safe_get(url, headers=None, timeout=DEFAULT_TIMEOUT, max_bytes=MAX_BYTES,
     for hop in range(max_redirects + 1):
         if time.monotonic() - started > CHAIN_DEADLINE:
             raise BlockedURL("redirect chain outlived its deadline")
-        response = http.get(current, headers=headers or DEFAULT_UA,
+        response = blog_reads.get(current, getter=http.get, headers=headers or DEFAULT_UA,
                             timeout=timeout, allow_redirects=False,
                             stream=True)
         location = (response.headers or {}).get("Location") if hasattr(response, "headers") else None

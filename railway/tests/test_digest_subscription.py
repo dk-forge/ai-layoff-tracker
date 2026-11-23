@@ -1116,7 +1116,7 @@ class OpsStatusWiring(unittest.TestCase):
     def test_an_install_without_the_table_reads_UNKNOWN(self):
         payload = {"available": False, "reason": "the subscriber table does not exist"}
         with mock.patch.dict(os.environ, {"WP_API_KEY": "k"}, clear=True), \
-                mock.patch("urllib.request.urlopen",
+                mock.patch.object(self.ops.blog_reads, "urlopen",
                            return_value=_fake_json_response(payload)):
             lines = self.ops.subscriber_lines()
         self.assertIn("UNKNOWN", lines[0])
@@ -1124,13 +1124,13 @@ class OpsStatusWiring(unittest.TestCase):
 
     def test_an_unreachable_route_reads_UNKNOWN(self):
         with mock.patch.dict(os.environ, {"WP_API_KEY": "k"}, clear=True), \
-                mock.patch("urllib.request.urlopen", side_effect=OSError("blocked")):
+                mock.patch.object(self.ops.blog_reads, "urlopen", side_effect=OSError("blocked")):
             lines = self.ops.subscriber_lines()
         self.assertIn("UNKNOWN", lines[0])
 
     def test_numbers_render_as_counts_with_no_address_and_no_open_rate(self):
         with mock.patch.dict(os.environ, {"WP_API_KEY": "k"}, clear=True), \
-                mock.patch("urllib.request.urlopen",
+                mock.patch.object(self.ops.blog_reads, "urlopen",
                            return_value=_fake_json_response(self.NUMBERS)):
             lines = self.ops.subscriber_lines()
         text = " ".join(lines)
@@ -1147,7 +1147,7 @@ class OpsStatusWiring(unittest.TestCase):
     def test_an_empty_send_log_is_not_reported_as_a_failed_send(self):
         payload = dict(self.NUMBERS, last_send=None)
         with mock.patch.dict(os.environ, {"WP_API_KEY": "k"}, clear=True), \
-                mock.patch("urllib.request.urlopen",
+                mock.patch.object(self.ops.blog_reads, "urlopen",
                            return_value=_fake_json_response(payload)):
             text = " ".join(self.ops.subscriber_lines())
         self.assertIn("none logged yet", text)

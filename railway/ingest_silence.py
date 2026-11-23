@@ -20,6 +20,11 @@ Stdlib only; read-only public GET.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import ast
 import json
 import os
@@ -110,7 +115,7 @@ def verdict(runs, now=None, max_silence=MAX_SILENCE, sources=None):
 def _fetch(days):
     url = f"{BASE}/wp-json/layoffs/v1/source-runs?days={days}&per_page=200&cb={uuid.uuid4()}"
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=40) as resp:
+    with blog_reads.urlopen(req, timeout=40) as resp:
         return json.load(resp)
 
 

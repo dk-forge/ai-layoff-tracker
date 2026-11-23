@@ -49,6 +49,11 @@ ARCHIVE_SPN_GAP_SECONDS (gap between captures, default 6),
 ARCHIVE_BACKFILL_DEADLINE_SECONDS (default 1500, stops safely between URLs),
 ARCHIVE_BACKFILL_DRY_RUN=1 (check + print, no saves, no writes).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import os
 import sys
 import time
@@ -175,7 +180,7 @@ def classify_outcome(availability_url, spn_url):
 def check_availability(url, session):
     """Free existence check. Returns a permalink or None; never raises."""
     try:
-        r = session.get(AVAILABILITY, params={"url": url}, headers=UA, timeout=30)
+        r = blog_reads.get(AVAILABILITY, getter=session.get, params={"url": url}, headers=UA, timeout=30)
         if r.status_code != 200:
             return None
         return parse_availability(r.json())
@@ -188,7 +193,7 @@ def save_page_now(url, session):
 
     Never raises: a save failure just leaves the URL 'pending' for a later run."""
     try:
-        r = session.get(SAVE + url, headers=UA, timeout=90, allow_redirects=True)
+        r = blog_reads.get(SAVE + url, getter=session.get, headers=UA, timeout=90, allow_redirects=True)
         if r.status_code == 429:
             return RATE_LIMITED
         loc = r.headers.get("Content-Location") or ""
@@ -432,7 +437,7 @@ def run():
     # Read the true server coverage for the health detail (accurate regardless
     # of how records were batched above).
     try:
-        coverage_after = session.get(f"{SITE}/wp-json/layoffs/v1/archive-coverage",
+        coverage_after = blog_reads.get(f"{SITE}/wp-json/layoffs/v1/archive-coverage", getter=session.get,
                                      headers=UA, timeout=30).json()
     except Exception:
         coverage_after = {}

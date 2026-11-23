@@ -197,6 +197,11 @@ USAGE
 
 Env: WP_SITE_URL.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import os
 import sys
@@ -3171,7 +3176,7 @@ def canonical(name):
 
 def _http(url, timeout=45):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with blog_reads.urlopen(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", "replace")
 
 

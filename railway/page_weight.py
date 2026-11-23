@@ -8,6 +8,12 @@ catches a regression, not the status quo.
 Read-only, stdlib only, no keys. Exit 0 = all within budget, 2 = a page is
 over budget, 3 = a page could not be measured (UNKNOWN, never a pass).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import re
 import sys
 import urllib.request
@@ -46,7 +52,7 @@ def exit_code(verdicts):
 def measure(url, timeout=30):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with blog_reads.urlopen(req, timeout=timeout) as r:
             body = r.read()
     except Exception as e:  # noqa: BLE001 - any failure is UNKNOWN, reported
         print(f"UNKNOWN {url}: {type(e).__name__}: {e}")

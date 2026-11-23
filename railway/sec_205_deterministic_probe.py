@@ -80,6 +80,11 @@ Env:
     D205_HELD          also measure the "do we already hold this?" pre-check
                        against the public /query API (no key, read-only).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import datetime
 import json
 import os
@@ -168,7 +173,7 @@ def _get(url):
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept-Encoding": "identity"})
     time.sleep(SEC_DELAY)
-    with urllib.request.urlopen(req, timeout=45) as resp:
+    with blog_reads.urlopen(req, timeout=45) as resp:
         return resp.read(MAX_DOC_BYTES).decode("utf-8", "replace")
 
 
@@ -412,7 +417,7 @@ def already_held(company, filing_date):
         try:
             req = urllib.request.Request(url, headers={
                 "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with blog_reads.urlopen(req, timeout=30) as resp:
                 rows += json.loads(resp.read().decode("utf-8", "replace")).get("data", [])
         except Exception:
             return {"employer_year": None, "near_date": None}

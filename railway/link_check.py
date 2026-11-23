@@ -15,6 +15,12 @@ owner about its own hiccup):
 Env: WP_SITE_URL, WP_API_KEY (for the /alert email + health ledger),
 LINK_CHECK_SAMPLE (default 60 source links). No LLM, ~0 cost.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import os
 import sys
 
@@ -51,7 +57,7 @@ PUBLIC_PAGES = (
 def _status(url, headers, timeout=25):
     """Return an int HTTP status, or 0 on transport failure. Never raises."""
     try:
-        r = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True, stream=True)
+        r = blog_reads.get(url, getter=requests.get, headers=headers, timeout=timeout, allow_redirects=True, stream=True)
         code = r.status_code
         r.close()
         return code
@@ -119,7 +125,7 @@ def check_pages():
 def check_sources():
     """Sample recent rows' source_url; report the broken rate (informational)."""
     try:
-        r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{SITE}/wp-json/layoffs/v1/query", getter=requests.get,
                          params={"per_page": SAMPLE, "sort": "layoff_date", "dir": "desc",
                                  "cb": "linkcheck"}, headers=UA, timeout=40)
         rows = r.json().get("data", []) if r.status_code == 200 else []

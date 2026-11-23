@@ -41,6 +41,11 @@ the recall claim unfalsifiable:
 
 Env: RP_PRECISION_SAMPLE (default 40), RP_DRY (skip health post + file write).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import csv
 import os
 import re
@@ -136,7 +141,7 @@ def _token(name):
 
 def _fetch_text(url):
     try:
-        r = requests.get(url, headers=UA, timeout=25)
+        r = blog_reads.get(url, getter=requests.get, headers=UA, timeout=25)
         if r.status_code != 200:
             return None, f"http_{r.status_code}"
         # crude tag strip is enough to confirm a number's presence
@@ -149,7 +154,7 @@ def measure_precision():
     """Sample published entries and confirm the count is real in the source."""
     try:
         yr = date.today().year
-        r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{SITE}/wp-json/layoffs/v1/query", getter=requests.get,
                          params={"years": str(yr), "sources": "news", "per_page": SAMPLE * 3,
                                  "sort": "id", "dir": "desc",
                                  "date_basis": GOLDSET_DATE_BASIS}, headers=UA, timeout=30)
@@ -214,7 +219,7 @@ def measure_ai_precision():
     """
     try:
         yr = date.today().year
-        r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{SITE}/wp-json/layoffs/v1/query", getter=requests.get,
                          params={"years": str(yr), "ai": "1", "per_page": 300,
                                  "date_basis": GOLDSET_DATE_BASIS},
                          headers=UA, timeout=30)
@@ -265,7 +270,7 @@ def measure_recall():
     for g in gold:
         company = g["company"].strip()
         try:
-            r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
+            r = blog_reads.get(f"{SITE}/wp-json/layoffs/v1/query", getter=requests.get,
                              params={"company": company, "years": g.get("year", "2026"),
                                      "per_page": 30,
                                      "date_basis": GOLDSET_DATE_BASIS},

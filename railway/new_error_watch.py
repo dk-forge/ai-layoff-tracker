@@ -79,6 +79,11 @@ unbounded.
 
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import hashlib
 import json
@@ -170,7 +175,7 @@ def _http_get(url: str, headers: dict):
     (translated to a normal return), only for a transport failure."""
     req = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with blog_reads.urlopen(req, timeout=30) as resp:
             return resp.status, resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         try:
@@ -369,7 +374,7 @@ def _make_openrouter_call(prompt: str, api_key: str, http_post=None):
     def _default_post():
         req = urllib.request.Request(OPENROUTER_URL, data=body, headers=headers,
                                      method="POST")
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with blog_reads.urlopen(req, timeout=60) as resp:
             return json.loads(resp.read().decode("utf-8", "replace"))
 
     return (http_post or _default_post)()

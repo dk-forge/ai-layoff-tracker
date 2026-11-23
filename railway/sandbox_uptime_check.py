@@ -68,6 +68,11 @@ new_error_watch.py.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import json
 import socket
@@ -150,7 +155,7 @@ def _http_get(url: str, timeout: int = 15):
                                                 "Accept": "application/json, */*"},
                                  method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with blog_reads.urlopen(req, timeout=timeout) as resp:
             return resp.status, resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         try:

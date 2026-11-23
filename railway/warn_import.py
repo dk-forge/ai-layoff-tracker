@@ -13,6 +13,11 @@ Env:
   WARN_LIMIT          max notices (blank = no cap)
   WP_SITE_URL, WP_API_KEY
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html as _html
 import json
 import os
@@ -373,9 +378,9 @@ def db_frontier_dates(states, *, limit=30, today=None):
 
     def _dates(st, params):
         """Layoff dates from one /query page, or [] on any failure."""
-        resp = requests.get(f"{wp}/wp-json/layoffs/v1/query",
+        resp = blog_reads.get(f"{wp}/wp-json/layoffs/v1/query",
                             params=dict(params, state=st),
-                            headers=headers, timeout=30)
+                            headers=headers, timeout=30, getter=requests.get)
         if resp.status_code != 200:
             print(f"db_frontier_dates({st}): HTTP {resp.status_code}, skipped")
             return []

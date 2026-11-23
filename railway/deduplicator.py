@@ -6,6 +6,11 @@ the server deduplicates totals while retaining a duplicate's source report on
 the canonical event. This helper remains only for diagnostics/backward
 compatibility; do not use it to pre-skip a source-bearing ingest record.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import os
 
 import requests
@@ -28,8 +33,8 @@ def is_duplicate(dedup_hash):
         return False
 
     try:
-        resp = requests.get(
-            f"{wp_url}/wp-json/layoffs/v1/check-duplicate",
+        resp = blog_reads.get(
+            f"{wp_url}/wp-json/layoffs/v1/check-duplicate", getter=requests.get,
             params={"hash": dedup_hash},
             headers={
                 "X-Layoff-API-Key": api_key,

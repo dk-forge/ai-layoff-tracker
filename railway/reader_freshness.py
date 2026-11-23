@@ -79,6 +79,11 @@ that the result is now detected instead of passed.
 
 Stdlib only, no keys, safe to run from anywhere.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import argparse
 import hashlib
 import os
@@ -357,7 +362,7 @@ def _open(url, ua, timeout=40):
     headers = {"User-Agent": ua}
     req = urllib.request.Request(url, headers=headers)
     try:
-        return urllib.request.urlopen(req, timeout=timeout)
+        return blog_reads.urlopen(req, timeout=timeout)
     except urllib.error.HTTPError as exc:
         # Bluehost's human gate does not use Set-Cookie. It returns HTTP 409
         # with a tiny script assigning a short-lived `humans_N=1` cookie, then
@@ -375,7 +380,7 @@ def _open(url, ua, timeout=40):
             raise
         retry = urllib.request.Request(
             url, headers={**headers, "Cookie": found.group(1)})
-        return urllib.request.urlopen(retry, timeout=timeout)
+        return blog_reads.urlopen(retry, timeout=timeout)
 
 
 def reader_view(url=PAGE_URL, timeout=40):

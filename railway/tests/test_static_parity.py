@@ -169,6 +169,10 @@ class LiveFetch(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
+        import os
+        environment = patch.dict(os.environ, {'ALT_BLOG_CACHE_DIR': str(Path(self.temp.name) / 'bot-budget')})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.client = parity.LivePages(Path(self.temp.name), interval=0)
 
     def response(self, text=page()):
@@ -185,6 +189,19 @@ class LiveFetch(unittest.TestCase):
         second = parity.LivePages(Path(self.temp.name), interval=0)
         with patch.object(second.opener, 'open', side_effect=AssertionError('unexpected network')):
             self.assertEqual(second(HUB), page())
+
+    def test_separate_parity_cache_paths_share_the_bot_budget(self):
+        import os
+        shared = Path(self.temp.name) / 'shared'
+        with patch.dict(os.environ, {'ALT_BLOG_CACHE_DIR': str(shared)}):
+            first = parity.LivePages(Path(self.temp.name) / 'one', interval=0)
+            second = parity.LivePages(Path(self.temp.name) / 'two', interval=0)
+            with patch.object(first.opener, 'open', return_value=self.response()) as one:
+                self.assertEqual(first(HUB), page())
+            with patch.object(second.opener, 'open', return_value=self.response()) as two:
+                self.assertEqual(second(HUB), page())
+            self.assertEqual(one.call_count + two.call_count, 1)
+            self.assertEqual(second.requests, 0)
 
     def test_failures_are_cached_without_retry_storms(self):
         with patch.object(self.client.opener, 'open', side_effect=OSError('unreachable')) as request:

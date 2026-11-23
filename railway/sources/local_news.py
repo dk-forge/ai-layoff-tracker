@@ -80,6 +80,11 @@ source, so dedup, count-verbatim, date bounds and normalization apply once.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import html
 import os
 import re
@@ -391,7 +396,7 @@ def pull_local_news(countries=None, fetch=None):
 
     def _default_fetch(url):
         import requests
-        r = requests.get(url, headers=UA, timeout=30)
+        r = blog_reads.get(url, getter=requests.get, headers=UA, timeout=30)
         return r.status_code, r.text
     do_fetch = fetch or _default_fetch
 

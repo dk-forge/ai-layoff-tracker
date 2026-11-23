@@ -43,11 +43,10 @@ jobs:
           LIMIT: ${{ inputs.limit }}
         run: |
           BASE="https://asktherecruiter.com/blog/wp-json/layoffs/v1"
-          UA="AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
-          curl -sS "$BASE/seo-404s?limit=${LIMIT:-500}" \
-            -H "X-Layoff-API-Key: $KEY" -H "User-Agent: $UA" -o seo-404s.json
-          curl -sS "$BASE/seo-redirects" \
-            -H "X-Layoff-API-Key: $KEY" -H "User-Agent: $UA" -o seo-redirects.json
+          python3 railway/blog_read_cli.py "$BASE/seo-404s?limit=${LIMIT:-500}" \
+            --allow-http-error --key-env KEY --output seo-404s.json
+          python3 railway/blog_read_cli.py "$BASE/seo-redirects" \
+            --allow-http-error --key-env KEY --output seo-redirects.json
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
 

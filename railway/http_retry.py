@@ -23,6 +23,7 @@ the code whose job is to behave well when things are broken must not be
 breakable by dependency resolution. `requests` is therefore an OPTIONAL import,
 so this module loads on a runner that has no third-party packages.
 """
+
 import json
 import re
 import time
@@ -155,6 +156,10 @@ def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backo
     collector pass its own module-level `requests.get`, so a test that patches
     `collector.requests.get` keeps seeing every attempt. `sleep` is for tests.
     """
+    try:
+        import blog_read_cache as blog_reads
+    except ModuleNotFoundError:
+        from railway import blog_read_cache as blog_reads
     if get is None:
         if requests is None:  # pragma: no cover - a caller mistake, not a host fault
             raise RuntimeError("get_with_retry needs `requests`; the stdlib-only "
@@ -164,28 +169,37 @@ def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backo
     retried = set(TRANSIENT) | set(transient or ())
     exc_types = (requests.RequestException,) if requests is not None else (OSError,)
 
+    authenticated = blog_reads.auth_reads.authenticated(url, headers or {})
+    if authenticated:
+        retried.update(range(500, 600))
     for attempt in range(attempts):
         try:
             sent_headers = dict(headers or DEFAULT_UA)
-            r = get(url, params=params, headers=sent_headers,
-                    timeout=timeout)
+            r = blog_reads.get(url, getter=get, params=params, headers=sent_headers,
+                    timeout=timeout, _auth_attempts=1)
             cookie = human_challenge_cookie(r.status_code, getattr(r, "text", ""))
-            if cookie:
+            if cookie and not blog_reads.eligible(url, sent_headers):
                 # The challenge request did not reach WordPress. Replay the
                 # same GET once, just as the returned browser script does.
                 sent_headers["Cookie"] = cookie
-                r = get(url, params=params, headers=sent_headers,
-                        timeout=timeout)
+                r = blog_reads.get(url, getter=get, params=params, headers=sent_headers,
+                        timeout=timeout, _auth_attempts=1)
             if r.status_code not in retried:
                 return r
             if attempt < attempts - 1:
-                asked = retry_after_seconds(r)
-                sleep(asked if asked is not None else backoff * (attempt + 1))
+                if authenticated:
+                    blog_reads.auth_reads.RUN.count('authenticated_api', 'retries')
+                delay = backoff * (2 ** attempt if authenticated else attempt + 1)
+                asked = retry_after_seconds(r, cap=60 if authenticated else RETRY_AFTER_CAP_SECONDS)
+                sleep(max(delay, asked) if authenticated and asked is not None
+                      else asked if asked is not None else delay)
                 continue
             return None
         except exc_types:
             if attempt < attempts - 1:
-                sleep(backoff * (attempt + 1))
+                if authenticated:
+                    blog_reads.auth_reads.RUN.count('authenticated_api', 'retries')
+                sleep(backoff * (2 ** attempt if authenticated else attempt + 1))
                 continue
             return None
     return None
@@ -239,10 +253,14 @@ def _send(method, url, data=None, headers=None, timeout=90):
     The single seam the tests replace, so the three outcomes can be exercised
     without a network and without a live outage to wait for.
     """
+    try:
+        import blog_read_cache as blog_reads
+    except ModuleNotFoundError:
+        from railway import blog_read_cache as blog_reads
     req = urllib.request.Request(url, data=data, headers=headers or {},
                                  method=method)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with blog_reads.urlopen(req, timeout=timeout, _auth_attempts=1) as resp:
             return resp.getcode(), resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         body = ""
@@ -254,6 +272,8 @@ def _send(method, url, data=None, headers=None, timeout=90):
         return exc.code, body
     except urllib.error.URLError as exc:
         raise Unreachable(str(exc.reason)) from exc
+    except blog_reads.auth_reads.RequestBudgetExceeded:
+        raise
     except (OSError, ValueError) as exc:
         raise Unreachable(str(exc)) from exc
 
@@ -273,9 +293,17 @@ def call_with_retry(url, *, method="POST", data=None, headers=None, timeout=90,
     sent_headers = dict(DEFAULT_UA)
     sent_headers.update(headers or {})
 
+    try:
+        import authenticated_blog_reads as auth_reads
+    except ModuleNotFoundError:
+        from railway import authenticated_blog_reads as auth_reads
+    authenticated = method.upper() in ('GET', 'HEAD') and auth_reads.authenticated(url, sent_headers)
+    retried = TRANSIENT | set(range(500, 600)) if authenticated else TRANSIENT
     detail = "no attempt was made"
     for delay in (None,) + tuple(backoff):
         if delay is not None:
+            if authenticated:
+                auth_reads.RUN.count('authenticated_api', 'retries')
             print(f"  {url} did not answer ({detail}): retrying in {delay}s")
             sleep(delay)
         try:
@@ -293,7 +321,7 @@ def call_with_retry(url, *, method="POST", data=None, headers=None, timeout=90,
         except Unreachable as exc:
             detail = f"could not reach the host: {exc}"
             continue
-        if status in TRANSIENT:
+        if status in retried:
             detail = f"HTTP {status} from the host: {body.strip()[:200]}"
             continue
         if 200 <= status < 400:

@@ -18,6 +18,11 @@ Stdlib only. Prints one `::notice title=bls-archive::` line.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import gzip
 import hashlib
@@ -50,7 +55,7 @@ def listing_names(html: str, survey: str) -> list:
 
 def _get(url, timeout=300):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    return urllib.request.urlopen(req, timeout=timeout)
+    return blog_reads.urlopen(req, timeout=timeout)
 
 
 def download(out: str) -> dict:

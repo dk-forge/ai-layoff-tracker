@@ -20,6 +20,11 @@ Exit: 0 every held row decided (or none held), 3 some row left held, 1 hard fail
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import datetime as _dt
 import json
@@ -47,7 +52,7 @@ def _call(site: str, key: str, path: str, body: dict | None = None) -> dict:
         data=json.dumps(body).encode() if body is not None else None,
         method="POST" if body is not None else "GET",
         headers={"X-Layoff-API-Key": key, "Content-Type": "application/json", "User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with blog_reads.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 

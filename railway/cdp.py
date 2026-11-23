@@ -12,6 +12,11 @@ Not a general-purpose client. It speaks exactly enough to:
   launch headless Chrome -> open a target -> Page.navigate -> Runtime.evaluate.
 """
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import base64
 import json
 import os
@@ -254,7 +259,7 @@ class Browser:
         last = None
         while time.time() < end:
             try:
-                raw = urllib.request.urlopen(
+                raw = blog_reads.urlopen(
                     'http://127.0.0.1:%d/json/list' % port, timeout=2).read()
                 for t in json.loads(raw):
                     if t.get('type') == 'page' and t.get('webSocketDebuggerUrl'):

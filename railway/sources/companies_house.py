@@ -13,6 +13,11 @@ their own source-health result when it is admitted to a workflow.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import os
 import re
 from datetime import datetime, timezone
@@ -54,8 +59,8 @@ def fetch_registered_identity(company_number: str, api_key: str | None = None, *
     key = api_key or os.environ.get("COMPANIES_HOUSE_API_KEY_UK", "")
     if not key:
         raise RuntimeError("COMPANIES_HOUSE_API_KEY_UK is required")
-    response = session.get(
-        f"{API_BASE}/company/{number}",
+    response = blog_reads.get(
+        f"{API_BASE}/company/{number}", getter=session.get,
         auth=(key, ""),
         headers={"User-Agent": UA, "Accept": "application/json"},
         timeout=20,

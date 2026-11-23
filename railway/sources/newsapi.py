@@ -9,6 +9,11 @@ Free (Developer) tier caveats that bite silently:
   - 100 requests/day
 Production tier ($449/mo) removes the delay and truncation.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -162,7 +167,7 @@ def pull_news_articles(days_back=4, queries=None):
             "apiKey": api_key,
         }
         try:
-            resp = requests.get(NEWSAPI_URL, params=params, timeout=30)
+            resp = blog_reads.get(NEWSAPI_URL, getter=requests.get, params=params, timeout=30)
             if resp.status_code == 429:
                 # A quota/rate limit applies to the whole API key, so another
                 # query in this run cannot safely recover it.

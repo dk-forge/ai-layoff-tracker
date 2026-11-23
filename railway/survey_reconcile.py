@@ -11,6 +11,11 @@ and each record is an upsert keyed by reference month, so a run the host never
 answered leaves yesterday's record standing and tomorrow's run replaces it with
 a fresher one. It changes no tracker event.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html
 import json
 import os
@@ -79,7 +84,7 @@ def month_window(reference_month, ytd=False):
 
 
 def latest_report():
-    response = requests.get(FEED, headers=UA, timeout=45)
+    response = blog_reads.get(FEED, headers=UA, timeout=45, getter=requests.get)
     response.raise_for_status()
     root = ET.fromstring(response.content)
     for node in root.iter():
@@ -129,7 +134,7 @@ def survey_ai_totals(url, reference_month, page_text=None):
 
 
 def _fetch_report_text(url):
-    response = requests.get(url, headers=UA, timeout=45)
+    response = blog_reads.get(url, headers=UA, timeout=45, getter=requests.get)
     response.raise_for_status()
     return _strip(response.text)
 

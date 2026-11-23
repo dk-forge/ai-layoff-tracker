@@ -39,6 +39,11 @@ PRIVACY. Prompts and completions are never requested and never printed. The
 activity endpoint returns spend metadata only; the key is never echoed, not
 even inside an error string.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import argparse
 import json
 import os
@@ -105,7 +110,7 @@ def fetch_activity(days=7, get=None):
 def _http_get(url):
     req = urllib.request.Request(
         url, headers={"Authorization": f"Bearer {OR_KEY}", "User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=25) as r:
+    with blog_reads.urlopen(req, timeout=25) as r:
         return json.loads(r.read().decode("utf-8"))
 
 

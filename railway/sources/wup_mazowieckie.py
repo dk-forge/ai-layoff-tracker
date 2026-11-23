@@ -36,6 +36,11 @@ straciło 280 osób" counts dismissals actually carried out that month, from
 notices filed earlier; the register rows are the newly notified INTENTIONS, and
 the two are different quantities in the same paragraph.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import calendar
 import hashlib
 import html as _html
@@ -321,7 +326,7 @@ def health_detail():
 def pull_wup_mazowieckie(max_posts=4):
     """Fetch recent register posts from the press listing and parse notices."""
     global _LAST_REPORT
-    page = requests.get(LISTING_URL, headers=UA, timeout=TIMEOUT)
+    page = blog_reads.get(LISTING_URL, getter=requests.get, headers=UA, timeout=TIMEOUT)
     page.raise_for_status()
     links = []
     for u, t in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', page.text, re.S):
@@ -335,7 +340,7 @@ def pull_wup_mazowieckie(max_posts=4):
     out, seen, total_skipped = [], set(), 0
     for url in links[:max_posts]:
         try:
-            post = requests.get(url, headers=UA, timeout=TIMEOUT)
+            post = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT)
             if post.status_code != 200:
                 continue
             flat = _flat(post.text)

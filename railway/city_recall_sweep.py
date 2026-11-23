@@ -38,6 +38,11 @@ runner that can write the named file is the leak.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import json
 import os
@@ -330,7 +335,7 @@ def our_rows(token, site, timeout=30, cache=None, breaker=None, sleep=time.sleep
         return None
     rows = None
     try:
-        r = requests.get(f"{site}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{site}/wp-json/layoffs/v1/query", getter=requests.get,
                          params={"company": token, "per_page": 50},
                          headers=UA, timeout=timeout)
         if r.status_code == 200:
@@ -551,7 +556,7 @@ def fetch_index(query, ed, timeout=30):
     """One RSS index read. Returns (items, error) where error is '' or a
     short transport label. Never raises."""
     try:
-        r = requests.get(_rss_url(query, ed[0], ed[1], ed[2]), headers=GN_UA, timeout=timeout)
+        r = blog_reads.get(_rss_url(query, ed[0], ed[1], ed[2]), getter=requests.get, headers=GN_UA, timeout=timeout)
     except Exception as e:
         return [], type(e).__name__
     if r.status_code != 200:

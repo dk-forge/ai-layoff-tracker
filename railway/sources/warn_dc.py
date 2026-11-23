@@ -12,6 +12,11 @@ and a notice already stored from the open scraper is not published twice. The
 date is the effective date, falling back to the notice date, matching the
 generic tier's preference in sources/warn.py.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import datetime as _dt
 
 import requests
@@ -44,7 +49,7 @@ def fetch_dc(today=None):
     for y in (year, year - 1):
         url = _PAGE.format(year=y)
         try:
-            r = requests.get(url, headers=UA, timeout=TIMEOUT)
+            r = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT)
         except Exception as exc:                           # noqa: BLE001
             print(f"    DC {y}: {exc}")
             continue

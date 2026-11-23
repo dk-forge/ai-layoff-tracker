@@ -64,6 +64,11 @@ dropped rather than published short.
 Structured government data -> route through /bulk (no LLM), like WARN. No paid
 model call is made anywhere in this path.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import hashlib
 import io
 import os
@@ -95,7 +100,7 @@ def _since():
 
 def _current_files(since_yyyymm):
     """Current file metadata at or after since_yyyymm, oldest first."""
-    r = requests.get(f"{OPM_BASE}/separations", params={"current": "true"},
+    r = blog_reads.get(f"{OPM_BASE}/separations", getter=requests.get, params={"current": "true"},
                      headers=UA, timeout=60)
     r.raise_for_status()
     meta = r.json()
@@ -118,7 +123,7 @@ def _read_rif_counts(f, sums):
     import pandas as pd
     url = f"{OPM_BASE}/separations/{f['year']}/{f['month']}/{f['version']}/download"
     try:
-        resp = requests.get(url, headers=UA, timeout=180)
+        resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=180)
         resp.raise_for_status()
         df = pd.read_parquet(io.BytesIO(resp.content), columns=[
             "count", "personnel_action_effective_date_yyyymm",
@@ -233,7 +238,7 @@ def pull_federal_drp_dryrun(since=None):
     sums = collections.defaultdict(int)
     for f in files:
         url = f"{OPM_BASE}/separations/{f['year']}/{f['month']}/{f['version']}/download"
-        resp = requests.get(url, headers=UA, timeout=180)
+        resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=180)
         resp.raise_for_status()
         df = pd.read_parquet(io.BytesIO(resp.content), columns=[
             "count", "personnel_action_effective_date_yyyymm", "drp_indicator", "agency"])

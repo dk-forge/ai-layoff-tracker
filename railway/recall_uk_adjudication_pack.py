@@ -19,6 +19,11 @@ source, and OUR row exactly as the public `/query` serves it today.
     python3 railway/recall_uk_adjudication_pack.py          # print
     python3 railway/recall_uk_adjudication_pack.py --write  # write the .md
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import sys
 import urllib.parse
@@ -48,7 +53,7 @@ def _rows_for(aliases):
         req = urllib.request.Request(url, headers={"User-Agent": UA,
                                                    "Accept": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with blog_reads.urlopen(req, timeout=30) as r:
                 for row in (json.loads(r.read()) or {}).get("data") or []:
                     out.setdefault(row.get("event_id"), row)
         except Exception as exc:                               # noqa: BLE001

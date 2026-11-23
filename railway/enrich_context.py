@@ -23,6 +23,11 @@ SAFE TO DEFER: the queue is server-side, the batch rotates daily, and nothing
 is written until the single POST at the end. A row this run never reached is
 still queued tomorrow, so a run the host never answered costs one rotation.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import os
 import re
 import sys
@@ -127,8 +132,8 @@ def usable_article_text(text):
 def wayback_snapshot(url):
     """Newest archived snapshot URL for ``url`` ('' when none; never raises)."""
     try:
-        response = requests.get(
-            WAYBACK_AVAILABILITY_API,
+        response = blog_reads.get(
+            WAYBACK_AVAILABILITY_API, getter=requests.get,
             # Asking for "closest to today" resolves the newest snapshot.
             params={"url": url, "timestamp": date.today().strftime("%Y%m%d")},
             headers={"User-Agent": UA}, timeout=WAYBACK_TIMEOUT,

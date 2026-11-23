@@ -39,6 +39,11 @@ DUE_AFTER_DAYS behind today with no constant entered is reported STALE (exit
 same months from the same file. The due window must equal $alt_mc_due_days in
 page-press.php; test_stage_tier_and_survey_table pins both.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import ssl
 import sys
@@ -93,7 +98,7 @@ def fetch(params):
     req = urllib.request.Request(url.replace(" ", "%20"),
                                  headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=45,
+        with blog_reads.urlopen(req, timeout=45,
                                     context=ssl.create_default_context()) as r:
             return json.load(r).get("totals")
     except Exception as exc:

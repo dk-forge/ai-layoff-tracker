@@ -75,6 +75,11 @@ That is also what makes "cost per stored row" answerable -- see run_summary().
 
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import datetime
 import hashlib
@@ -655,7 +660,7 @@ def _get_json(url: str, api_key: str | None = None, timeout: int = 30):
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with blog_reads.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -1873,7 +1878,7 @@ def harvest(days: int = 2) -> int:
             loc = err.headers.get("Location")
             if not loc:
                 raise
-            with urllib.request.urlopen(
+            with blog_reads.urlopen(
                     urllib.request.Request(loc, headers={"User-Agent": USER_AGENT}),
                     timeout=60) as resp:
                 body = resp.read()
@@ -1954,7 +1959,7 @@ def harvest_railway_runs() -> list[dict]:
                      "Content-Type": "application/json",
                      "X-Layoff-API-Key": wp_key},
             method="POST")
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with blog_reads.urlopen(req, timeout=30) as resp:
             meta = json.loads(resp.read().decode("utf-8"))
     except Exception as exc:
         print(f"harvest: could not read /tracker-meta ({exc}) — Railway cron "

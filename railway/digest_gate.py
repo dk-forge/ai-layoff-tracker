@@ -26,6 +26,11 @@ by digest-send.yml). The structural checks are pure and always run.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import html as _html
 import re
 import socket
@@ -89,7 +94,7 @@ def _status(url: str) -> int | None:
     for method in ("HEAD", "GET"):
         req = urllib.request.Request(url, method=method, headers={"User-Agent": UA})
         try:
-            with opener.open(req, timeout=LINK_TIMEOUT) as resp:
+            with blog_reads.urlopen(req, timeout=LINK_TIMEOUT, stream_opener=opener.open) as resp:
                 return resp.status
         except urllib.error.HTTPError as exc:
             if method == "HEAD" and exc.code in (403, 405, 501):

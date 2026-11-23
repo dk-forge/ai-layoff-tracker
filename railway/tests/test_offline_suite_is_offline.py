@@ -256,6 +256,17 @@ class EveryFetcherIsRegistered(unittest.TestCase):
                 called = cls._dotted(node.func)
                 if not called:
                     continue
+                # The cache client accepts explicit, offline transports. Its
+                # default remains a fetcher. Runtime netblock proof below also
+                # checks the actual cache tests, not just this source shape.
+                if (called.endswith(".urlopen") and any(
+                        isinstance(n, ast.Import) and any(a.name == "blog_read_cache"
+                            and called == (a.asname or a.name) + ".urlopen" for a in n.names)
+                        for n in ast.walk(tree)) and any(
+                        k.arg in ("open_one", "stream_opener") and not
+                        (isinstance(k.value, ast.Constant) and k.value.value is None)
+                        for k in node.keywords)):
+                    continue
                 if names_host and any(called == f or called.endswith("." + f)
                                       for f in cls.FETCH_NAMES):
                     out.add(name)
@@ -311,6 +322,18 @@ class EveryFetcherIsRegistered(unittest.TestCase):
                 '# and that is what took the site down.\n'
                 'x = 1\n')
         self.assertEqual(set(), self.fetchers({"test_bait": bait}))
+
+    def test_actual_cache_contracts_cannot_open_a_live_connection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc, attempts = _run_under_netblock(['-m', 'unittest', 'test_blog_read_cache'], tmp)
+        self.assertEqual(0, proc.returncode, proc.stderr[-1500:])
+        self.assertEqual([], attempts, _describe(attempts))
+
+    def test_injected_blog_transports_are_offline_but_defaults_are_not(self):
+        prefix = 'SITE = "https://asktherecruiter.com/blog/"\nimport blog_read_cache as cache\n'
+        self.assertIn('test_bait', self.fetchers({'test_bait': prefix + 'cache.urlopen(SITE)'}))
+        for transport in ('open_one', 'stream_opener'):
+            self.assertEqual(set(), self.fetchers({'test_bait': prefix + f'cache.urlopen(SITE, {transport}=fake)'}))
 
     def test_no_unregistered_module_fetches_the_live_host(self):
         unregistered = self.fetchers(self._sources()) - set(live_host.LIVE_MODULES)

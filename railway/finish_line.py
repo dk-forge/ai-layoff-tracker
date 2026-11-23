@@ -21,6 +21,11 @@ Exit 0 = PASS, 1 = FAIL (UNKNOWN counts as FAIL: "could not check" is never a pa
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import datetime as dt
 import json
@@ -193,7 +198,7 @@ def data_date(payload, key: str, today: dt.date) -> dt.date | None:
 def fetch_json(url: str):
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with blog_reads.urlopen(req, timeout=30) as r:
             return json.loads(r.read().decode("utf-8"))
     except Exception:  # noqa: BLE001 - UNKNOWN, reported as FAIL
         return None
@@ -238,7 +243,7 @@ def iri_to_uri(url: str) -> str:
 def _fetch_once(url: str, timeout: int) -> tuple[int, str]:
     req = urllib.request.Request(iri_to_uri(url), headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with blog_reads.urlopen(req, timeout=timeout) as r:
             ctype = r.headers.get("Content-Type", "")
             body = r.read().decode("utf-8", "replace") if "html" in ctype else ""
             return r.status, body

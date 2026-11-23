@@ -27,7 +27,7 @@ from pathlib import Path
 
 RAILWAY = Path(__file__).resolve().parents[1]
 
-HTTP_MODULES = {"requests", "httpx", "urllib3"}
+HTTP_MODULES = {"requests", "httpx", "urllib3", "blog_reads"}
 VERBS = {"get", "post", "put", "patch", "delete", "head", "options", "request"}
 
 
@@ -50,27 +50,38 @@ def _forwards_kwargs(call):
     return any(kw.arg is None for kw in call.keywords)
 
 
+def _missing_timeouts(tree):
+    offenders = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        fn, label = node.func, None
+        if isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name):
+            if fn.value.id in HTTP_MODULES and fn.attr in VERBS:
+                label = f"{fn.value.id}.{fn.attr}"
+        name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
+        if name in {"urlopen", "urlretrieve"} and len(node.args) < 2:
+            label = "urlopen"
+        if name in {"SMTP", "SMTP_SSL"}:
+            label = f"smtplib.{name}"
+        if label and "timeout" not in _kwargs(node) and not _forwards_kwargs(node):
+            offenders.append((node.lineno, label))
+    return offenders
+
+
 class NoOutboundCallCanHangForever(unittest.TestCase):
     def test_no_http_call_site_omits_a_timeout(self):
         offenders = []
         for path, tree in _modules():
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call):
-                    continue
-                fn, label = node.func, None
-                if isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name):
-                    if fn.value.id in HTTP_MODULES and fn.attr in VERBS:
-                        label = f"{fn.value.id}.{fn.attr}"
-                name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
-                if name in {"urlopen", "urlretrieve"}:
-                    # urlopen's timeout may also be the second positional arg.
-                    if len(node.args) < 2:
-                        label = "urlopen"
-                if name in {"SMTP", "SMTP_SSL"}:
-                    label = f"smtplib.{name}"
-                if label and "timeout" not in _kwargs(node) and not _forwards_kwargs(node):
-                    offenders.append(f"{path.name}:{node.lineno} {label}")
+            for line, label in _missing_timeouts(tree):
+                offenders.append(f"{path.name}:{line} {label}")
         self.assertEqual(offenders, [], "\n" + "\n".join(offenders))
+
+    def test_public_policy_wrapper_still_requires_a_timeout(self):
+        for verb in ('get', 'request', 'urlopen'):
+            with self.subTest(verb=verb):
+                self.assertTrue(_missing_timeouts(ast.parse(f'blog_reads.{verb}(url)')))
+                self.assertEqual([], _missing_timeouts(ast.parse(f'blog_reads.{verb}(url, timeout=30)')))
 
     def test_every_paid_client_bounds_its_own_call(self):
         offenders, seen = [], 0

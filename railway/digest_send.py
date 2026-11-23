@@ -75,6 +75,11 @@ Env:
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import datetime
 import json
 import os
@@ -122,7 +127,7 @@ def _call(path: str, params=None, payload=None, timeout: int = 45):
         headers={"X-Layoff-API-Key": _key(), "User-Agent": UA,
                  "Content-Type": "application/json"},
         method="POST" if data is not None else "GET")
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with blog_reads.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8", "replace"))
 
 

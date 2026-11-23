@@ -55,6 +55,11 @@ from your own output cannot.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import json
 import re
@@ -257,7 +262,7 @@ def window_plan(row):
 def _default_fetch(url, timeout=60):
     req = urllib.request.Request(url, headers={"User-Agent": UA,
                                                "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with blog_reads.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 
 

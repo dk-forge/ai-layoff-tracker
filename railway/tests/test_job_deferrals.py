@@ -51,6 +51,7 @@ class _Response:
 
     def __init__(self, status, payload=None, text=""):
         self.status_code = status
+        self.headers = {}
         self._payload = payload if payload is not None else {}
         self.text = text or json.dumps(self._payload)
         self.content = self.text.encode()
@@ -92,7 +93,8 @@ class _JobCase(unittest.TestCase):
         self.ledger = Path(self._tmp.name) / "ledger.json"
         self.envelope = str(Path(self._tmp.name) / "envelope.json")
 
-        base = {"WP_SITE_URL": "https://asktherecruiter.com/blog",
+        base = {"ALT_BLOG_CACHE_DIR": str(Path(self._tmp.name) / "blog-cache"),
+                "WP_SITE_URL": "https://asktherecruiter.com/blog",
                 "WP_API_KEY": "test-key",
                 "OPENROUTER_API_KEY": "test-key",
                 "GITHUB_RUN_ID": "1", "GITHUB_RUN_ATTEMPT": "1"}
@@ -156,7 +158,8 @@ class _JobCase(unittest.TestCase):
                 mock.patch.object(urllib.request, "urlopen", urlopen), \
                 mock.patch.object(http_retry, "requests", requests), \
                 mock.patch("time.sleep", lambda _s: None), \
-                mock.patch.object(http_retry.time, "sleep", lambda _s: None):
+                mock.patch.object(http_retry.time, "sleep", lambda _s: None), \
+                mock.patch.object(http_retry, "_sleep", lambda _s: None):
             buf = io.StringIO()
             with mock.patch.object(sys, "stdout", buf):
                 try:

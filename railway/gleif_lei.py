@@ -29,6 +29,11 @@ layoff, and no row is touched.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import csv
 import io
@@ -217,7 +222,7 @@ def fetch_rows(site):
 
 
 def _get(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as r:
+    with blog_reads.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as r:
         return r.read()
 
 
@@ -226,7 +231,7 @@ def download_latest(dest_dir):
     url = meta["lei2"]["full_file"]["csv"]["url"]
     dest = Path(dest_dir) / "golden-copy.csv.zip"
     req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=600) as resp, open(dest, "wb") as fh:
+    with blog_reads.urlopen(req, timeout=600) as resp, open(dest, "wb") as fh:
         while chunk := resp.read(1 << 20):
             fh.write(chunk)
     return dest, meta["publish_date"]
