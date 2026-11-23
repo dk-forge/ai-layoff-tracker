@@ -1,3 +1,14 @@
+## 2026-11-23 - Weekly benchmark: layoff 18/25; prefilter keeps "cutting N others" and "voluntary departures"
+
+**What.** `docs/benchmarks/2026-11-23.md`, scored live on 2026-11-23 (deferred from 11-22 by the host outage). Strict recall 18/25 (last week 19/25, different list). Seven misses: 4 no row (Dutch government, Olympus, NatWest, Renault; all non-US), 3 wrong count (Volvo Cars, Ecco, Children's Place). Median time to listing 3 days. No ranking is claimed; no competitor was run. For Renault (2026-11-17) three of the real Google News headlines, "cutting 1,000 others" and "1,000 voluntary departures", named no workforce noun and the free title prefilter dropped them; `HEADCOUNT_PATTERN` now keeps them. Other Renault and NatWest headlines already passed the prefilter and still made no row, so the downstream cause is open. No spend, no backfill, no plugin change, no deploy.
+
+| Date | Layoff strict recall | Prior | Top miss cause |
+|---|---|---|---|
+| 2026-11-23 | 18/25 | 19/25 (2026-11-15, different list) | no row on non-US announcements (Dutch government, Olympus, NatWest, Renault) |
+
+**Guard:** railway/tests/test_google_news_prefilter.py (3 kept headlines, 2 dropped lookalikes)
+**Class:** novel (a headline shape the deterministic prefilter missed)
+
 ## 2026-11-22 - Static migration audit and offline build contract, no plugin release
 
 Audited public route families, backup coverage, metadata and WordPress-only

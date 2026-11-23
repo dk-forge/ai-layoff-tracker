@@ -72,16 +72,6 @@
       "last": 1790014405,
       "subject": "CI noise, week 2026-w39: 3 noisy run(s) in ai-layoff-tracker"
     },
-    "company-directory-autopilot:main:df94a480d2f1dbbb": {
-      "first": 1795357554,
-      "last": 1795357554,
-      "subject": "CI RED: Company directory autopilot \u2014 Autopilot call 1 returned HTTP 500"
-    },
-    "data-quality-report-anomaly-flags:main:e2216feba2183669": {
-      "first": 1795359703,
-      "last": 1795359703,
-      "subject": "CI RED: Data quality report (anomaly flags) \u2014 urllib.error.HTTPError: HTTP Error 500: Internal Server Error"
-    },
     "deploy-wordpress-plugin:codex-top3-restore-route:9dcbe4b14617f230": {
       "first": 1788899590,
       "last": 1788899590,
@@ -96,6 +86,11 @@
       "first": 1795359902,
       "last": 1795359902,
       "subject": "CI RED: Deploy WordPress plugin \u2014 The restore-merged-rows route is NOT registered on the live site after this deploy. FAIL: the tracker route index: HTTP 500 from https://asktherec"
+    },
+    "deploy-wordpress-plugin:main:188ae002fc6026aa": {
+      "first": 1795424010,
+      "last": 1795424010,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 The live tracker API answered and the answer is not the JSON this deploy expects. FAIL: the deployed tracker API: HTTP 508 from https://asktherecr"
     },
     "depth-source-snapshot-test-only:main:c34a64053cf61a19": {
       "first": 1791216897,
@@ -167,6 +162,11 @@
       "last": 1795372721,
       "subject": "CI RED: Retained evidence hash backfill \u2014 ^[[36;1m        echo \"Evidence-hash call failed after $attempt attempts (last HTTP $http)\" >&2^[[0m"
     },
+    "review-held-rows-two-referees:main:0502244882b4ec52": {
+      "first": 1795418632,
+      "last": 1795418632,
+      "subject": "CI RED: Review held rows (two referees) \u2014 urllib.error.HTTPError: HTTP Error 500: Internal Server Error"
+    },
     "review-held-rows-two-referees:main:3b0a4a7721dfc40b": {
       "first": 1795245639,
       "last": 1795245639,
@@ -187,12 +187,17 @@
       "last": 1794225755,
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE source_audit: last reported 38.7d ago (expected <= 35d): collector may have stopped"
     },
+    "weekly-health-digest-autonomy-tripwire:main:fd94c0379f982e19": {
+      "first": 1795435313,
+      "last": 1795435313,
+      "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 could not read source-health: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))"
+    },
     "zz-exposure-probe-temporary-branch-only:claude-exposure-probe-tmp:e209e89eb82e6f01": {
       "first": 1791240775,
       "last": 1791240775,
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-23T05:30:59+00:00",
+  "updated_at": "2026-11-23T15:02:31+00:00",
   "version": 1
 }
