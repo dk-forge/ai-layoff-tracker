@@ -41,6 +41,9 @@ $alt_widget_config = array(
     <p class="alt-widget-label" id="alt-widget-label">Source-linked job cuts</p>
     <p class="alt-widget-note">Source-linked entries only; coverage varies by source and location.</p>
     <a class="alt-widget-link" id="alt-widget-link" href="<?php echo esc_url($alt_widget_tracker_url); ?>" target="_blank" rel="noopener">View sources &amp; filters <span aria-hidden="true">↗</span></a>
+    <?php if (function_exists('alt_atr_cta_url')) : ?>
+    <a class="alt-widget-cta" href="<?php echo esc_url(alt_atr_cta_url('widget')); ?>" target="_blank" rel="noopener noreferrer nofollow">Check my match, free</a>
+    <?php endif; ?>
 </main>
 <?php // Hex flags, for the same reason page-chart-embed.php now has them: this is
       // the other bootstrap that ships to a third-party page. ?>

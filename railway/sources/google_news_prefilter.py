@@ -64,7 +64,11 @@ HEADCOUNT_PATTERN = re.compile(
     # and never uses a verb + workforce-noun shape.
     r"|\breductions?\s+in\s+(?:its\s+)?(?:work)?force\b"
     r"|\bworkforce\s+reductions?\b"
-    r"|\breduc(?:e|es|ed|ing|tion)\s+(?:of\s+)?(?:its\s+|the\s+)?(?:global\s+)?workforce\b",
+    r"|\breduc(?:e|es|ed|ing|tion)\s+(?:of\s+)?(?:its\s+|the\s+)?(?:global\s+)?workforce\b"
+    # 2026-11-23 benchmark (Renault, 2026-11-17): "cutting 1,000 others" has
+    # no workforce noun, and "voluntary departures" names no verb at all.
+    r"|\b(?:cut|cuts|cutting|axing|shedding)\s+(?:up\s+to\s+)?\d[\d,.]*\s+others\b"
+    r"|\bvoluntary\s+(?:departures?|redundanc(?:y|ies)|exits?|buy-?outs?)\b",
     re.I)
 
 # Scripts a language is written in, for the non-Latin editions. A title in the
