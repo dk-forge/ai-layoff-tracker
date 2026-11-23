@@ -97,6 +97,11 @@
       "last": 1795359902,
       "subject": "CI RED: Deploy WordPress plugin \u2014 The restore-merged-rows route is NOT registered on the live site after this deploy. FAIL: the tracker route index: HTTP 500 from https://asktherec"
     },
+    "deploy-wordpress-plugin:main:188ae002fc6026aa": {
+      "first": 1795424010,
+      "last": 1795424010,
+      "subject": "CI RED: Deploy WordPress plugin \u2014 The live tracker API answered and the answer is not the JSON this deploy expects. FAIL: the deployed tracker API: HTTP 508 from https://asktherecr"
+    },
     "depth-source-snapshot-test-only:main:c34a64053cf61a19": {
       "first": 1791216897,
       "last": 1791216897,
@@ -198,6 +203,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-23T07:23:52+00:00",
+  "updated_at": "2026-11-23T08:53:31+00:00",
   "version": 1
 }
