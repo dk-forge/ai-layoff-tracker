@@ -57,6 +57,11 @@ string, never treats a parse failure as ALLOW, and never lets a caller learn
 "allowed" from an exception path. `tests/test_robots_gate.py` breaks the guard
 by mutation and proves the article request does not go out.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import threading
 import time
 import urllib.robotparser
@@ -100,8 +105,8 @@ def _default_fetch(robots_url, user_agent):
     status -1 so the caller records UNKNOWN rather than judging a truncated
     directive set.
     """
-    resp = requests.get(robots_url, headers={"User-Agent": user_agent},
-                        timeout=ROBOTS_TIMEOUT_SECONDS, stream=True)
+    resp = blog_reads.get(robots_url, headers={"User-Agent": user_agent},
+                        timeout=ROBOTS_TIMEOUT_SECONDS, stream=True, getter=requests.get)
     try:
         if resp.status_code != 200:
             return resp.status_code, ""

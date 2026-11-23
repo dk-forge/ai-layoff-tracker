@@ -1,5 +1,5 @@
 ---
-title: Limit public tracker bot page reads
+title: Limit all tracker bot blog reads
 date: 2026-11-23
 files:
   - railway/blog_read_cache.py
@@ -17,5 +17,6 @@ tests:
 rollback: Revert this change to restore uncached public reads.
 env: No production configuration changed. Shared workers need the same private cache directory.
 ---
-Public page clients share cached responses and a one-hour attempt budget.
-Authenticated ingestion reads and independent worker caches remain outside this cap.
+All bot blog reads share a one-hour attempt budget, including authenticated APIs.
+Public pages can be cached. Private responses are never persisted or replayed.
+Workers need a shared private persistent cache to coordinate across machines.

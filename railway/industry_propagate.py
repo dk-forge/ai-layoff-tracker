@@ -20,6 +20,11 @@ whose tagged rows disagree beyond a clear majority is skipped, not guessed.
 Env: WP_SITE_URL, WP_API_KEY. Optional INDUSTRY_PROPAGATE_DRY_RUN=1,
 INDUSTRY_PROPAGATE_MAX (cap rows written this run, default 5000).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import collections
 import json
 import os
@@ -42,7 +47,7 @@ MAJORITY = 0.75
 
 def _get(url):
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
-    return json.load(urllib.request.urlopen(req, timeout=90))
+    return json.load(blog_reads.urlopen(req, timeout=90))
 
 
 def _post(path, payload):
@@ -51,7 +56,7 @@ def _post(path, payload):
         data=json.dumps(payload).encode("utf-8"),
         headers={"User-Agent": UA, "Content-Type": "application/json", "X-Layoff-API-Key": KEY},
         method="POST")
-    return json.load(urllib.request.urlopen(req, timeout=120))
+    return json.load(blog_reads.urlopen(req, timeout=120))
 
 
 def scan():

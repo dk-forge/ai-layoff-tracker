@@ -24,6 +24,11 @@ Read-only, no LLM calls, ~0 cost. Never raises: a monitoring job must not page
 the owner about its own failure. Env: OPENROUTER_API_KEY (already a GitHub
 secret), RESEND_API_KEY, ALERT_THRESHOLD (default 10 USD).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import os
 import sys
@@ -80,7 +85,7 @@ def _get(path):
     req = urllib.request.Request(f"{BASE}{path}",
                                  headers={"Authorization": f"Bearer {OR_KEY}", "User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=25) as r:
+        with blog_reads.urlopen(req, timeout=25) as r:
             return json.loads(r.read().decode("utf-8")).get("data") or {}
     except Exception as exc:
         # Never echo the key, even inside an error string.
@@ -130,7 +135,7 @@ def _live_row_count():
         req = urllib.request.Request(
             "https://asktherecruiter.com/blog/wp-json/layoffs/v1/aggregate",
             headers={"User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=25) as r:
+        with blog_reads.urlopen(req, timeout=25) as r:
             data = json.loads(r.read().decode("utf-8"))
         return int(((data.get("totals") or {}).get("entries")) or 0) or None
     except Exception as exc:

@@ -33,6 +33,11 @@ service: the server is killed when each model finishes.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import hashlib
 import json
@@ -182,7 +187,7 @@ def _get(url, dest, sha256=None, size=None):
     part = dest.with_suffix(dest.suffix + ".part")
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     h = hashlib.sha256()
-    with urllib.request.urlopen(req, timeout=60) as resp, open(part, "wb") as fh:
+    with blog_reads.urlopen(req, timeout=60) as resp, open(part, "wb") as fh:
         while True:
             chunk = resp.read(1 << 20)
             if not chunk:
@@ -211,7 +216,7 @@ def _release_asset(tag):
     req = urllib.request.Request(
         f"https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/{tag}",
         headers={"User-Agent": UA, "Accept": "application/vnd.github+json"})
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with blog_reads.urlopen(req, timeout=60) as resp:
         rel = json.load(resp)
     for a in rel.get("assets", []):
         name = a["name"]
@@ -277,7 +282,7 @@ def _post(port, body, timeout=600):
     req = urllib.request.Request(f"http://127.0.0.1:{port}/v1/chat/completions",
                                  data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with blog_reads.urlopen(req, timeout=timeout) as resp:
         return json.load(resp)
 
 
@@ -287,7 +292,7 @@ def _wait_health(port, proc, seconds=600):
         if proc.poll() is not None:
             raise SystemExit(f"llama-server exited with {proc.returncode}")
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as r:
+            with blog_reads.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as r:
                 if r.status == 200:
                     return
         except Exception:  # noqa: BLE001 - not up yet

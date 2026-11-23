@@ -1,6 +1,11 @@
 """
 POSTs extracted layoff data to WordPress REST API.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import os
 
 import requests
@@ -31,9 +36,9 @@ def _held_queue_ready(wp_url, api_key):
     """True once the keyed /held route answers 200 (cached per site per process)."""
     if wp_url not in _HELD_READY:
         try:
-            r = requests.get(f"{wp_url}/wp-json/layoffs/v1/held", timeout=30, headers={
+            r = blog_reads.get(f"{wp_url}/wp-json/layoffs/v1/held", timeout=30, headers={
                 "X-Layoff-API-Key": api_key,
-                "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
+                "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"}, getter=requests.get)
             _HELD_READY[wp_url] = r.status_code == 200
         except Exception:  # noqa: BLE001 - unknown is not ready
             return False

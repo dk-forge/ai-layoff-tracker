@@ -112,6 +112,11 @@ USAGE
 Env: RR_CACHE (EDGAR document cache dir), WP_SITE_URL, RR_WINDOW_END (pin the
 window end for a reproducible re-run, YYYY-MM-DD).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import os
 import re
@@ -252,7 +257,7 @@ def _http(url, timeout=45):
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept-Encoding": "identity"})
     time.sleep(SEC_DELAY)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with blog_reads.urlopen(req, timeout=timeout) as resp:
         return resp.read(MAX_DOC_BYTES).decode("utf-8", "replace")
 
 

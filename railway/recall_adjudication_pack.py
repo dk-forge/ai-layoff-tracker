@@ -35,6 +35,11 @@ USAGE
     python3 railway/recall_adjudication_pack.py            # print a summary
     python3 railway/recall_adjudication_pack.py --write    # write the pack + sheet
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html
 import json
 import re
@@ -73,7 +78,7 @@ SOFT = 1
 def _get(url, ua, timeout=60):
     req = urllib.request.Request(url, headers={"User-Agent": ua,
                                                "Accept-Encoding": "identity"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with blog_reads.urlopen(req, timeout=timeout) as resp:
         return resp.read()
 
 

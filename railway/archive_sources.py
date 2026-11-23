@@ -15,6 +15,11 @@ A snapshot, once taken, lives at:
   https://web.archive.org/web/*/<source_url>
 so the plugin can later add a "view archived copy" link with no per-row storage.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import os
 import sys
 import time
@@ -163,7 +168,7 @@ def wayback_reachable(get=None, timeout=20):
     serving us right now, which is the fact the verdict below turns on. `get`
     is injectable so the tests never touch the network.
     """
-    do_get = get or (lambda u, **kw: requests.get(u, **kw))
+    do_get = get or (lambda u, **kw: blog_reads.get(u, **kw, getter=requests.get))
     try:
         r = do_get(IA_PROBE, headers={"User-Agent": UA}, timeout=timeout)
     except Exception as exc:
@@ -266,8 +271,8 @@ def archive(url):
     it was thrown away until 2026-09-17 (see the tally note in `verdict`).
     """
     try:
-        r = requests.get(SAVE + url, headers={"User-Agent": UA},
-                         timeout=PER_URL_TIMEOUT, allow_redirects=True)
+        r = blog_reads.get(SAVE + url, headers={"User-Agent": UA},
+                         timeout=PER_URL_TIMEOUT, allow_redirects=True, getter=requests.get)
         # A capture reports its snapshot path in Content-Location; fall back to
         # the canonical latest-snapshot URL, which resolves once a capture exists.
         loc = r.headers.get("Content-Location") or ""

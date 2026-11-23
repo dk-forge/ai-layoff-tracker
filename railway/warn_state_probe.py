@@ -49,6 +49,11 @@ else in this module imports `requests` or opens a socket.
 USAGE
     python3 railway/warn_state_probe.py --probe   # re-probe all eight, write the report
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import re
 import sys
@@ -203,7 +208,7 @@ class ProbeResponse:
 def _http_fetch(url, ua=SITE_UA, timeout=30):
     req = urllib.request.Request(url, headers={"User-Agent": ua, "Accept": "*/*"})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with blog_reads.urlopen(req, timeout=timeout) as r:
             return ProbeResponse(r.status, dict(r.headers), r.read())
     except urllib.error.HTTPError as exc:
         body = exc.read() if exc.fp else b""

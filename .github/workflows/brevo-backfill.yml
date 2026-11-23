@@ -24,6 +24,7 @@ jobs:
       WP_SITE_URL: https://asktherecruiter.com/blog
       UA: "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"
     steps:
+      - uses: actions/checkout@v5
       - name: Page the backfill route
         run: |
           set -euo pipefail
@@ -54,10 +55,8 @@ jobs:
       - name: Brevo mirror status (counts only)
         run: |
           set -euo pipefail
-          curl -sS --fail-with-body \
-            "$WP_SITE_URL/wp-json/layoffs/v1/subscriber-stats" \
-            -H "X-Layoff-API-Key: $WP_API_KEY" -H "User-Agent: $UA" \
-            -o /tmp/ss.json
+          python3 railway/blog_read_cli.py "$WP_SITE_URL/wp-json/layoffs/v1/subscriber-stats" \
+            --key-env WP_API_KEY --output /tmp/ss.json
           python3 -c '
           import json; d = json.load(open("/tmp/ss.json"))
           m = d.get("brevo_mirror") or {}

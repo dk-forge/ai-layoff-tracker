@@ -18,6 +18,11 @@ Env: WATCHLIST_BATCH (companies/run, default 60), WATCHLIST_DAYS_BACK (news
 window, default 120), WATCHLIST_DEADLINE_SECONDS (default 900),
 WATCHLIST_DRY_RUN=1 to log candidates without posting.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import csv
 import os
 import re
@@ -89,7 +94,7 @@ def load_watchlist():
     # (e.g. S&P 500 / STOXX 600 constituents). Unset -> just the seed file.
     for url in [u.strip() for u in (os.environ.get("WATCHLIST_INDEX_URLS") or "").split(",") if u.strip()]:
         try:
-            r = requests.get(url, headers={"User-Agent": "AiLayoffTracker/1.0"}, timeout=30)
+            r = blog_reads.get(url, getter=requests.get, headers={"User-Agent": "AiLayoffTracker/1.0"}, timeout=30)
             if r.status_code != 200:
                 continue
             body = r.text
@@ -113,7 +118,7 @@ def load_watchlist():
     if os.environ.get("WATCHLIST_SELF_GROW", "1") != "0" and SITE:
         try:
             since = (date.today() - timedelta(days=365 * 3)).isoformat()
-            resp = requests.get(f"{SITE}/wp-json/layoffs/v1/companies",
+            resp = blog_reads.get(f"{SITE}/wp-json/layoffs/v1/companies", getter=requests.get,
                                 params={"since": since, "limit": 20000}, headers=UA, timeout=45)
             got = resp.json().get("companies", []) if resp.status_code == 200 else []
             for c in got:
@@ -143,8 +148,8 @@ def already_have(company):
     read a configuration fault as "our own API did not answer"."""
     site = require_site_url()
     try:
-        resp = requests.get(
-            f"{site}/wp-json/layoffs/v1/query",
+        resp = blog_reads.get(
+            f"{site}/wp-json/layoffs/v1/query", getter=requests.get,
             params={"company": company, "years": str(date.today().year), "per_page": 25},
             headers=UA, timeout=30)
         rows = resp.json().get("data", []) if resp.status_code == 200 else []

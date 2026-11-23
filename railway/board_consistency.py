@@ -30,6 +30,11 @@ a pass):
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import json
 import re
 import sys
@@ -131,7 +136,7 @@ def _fetch_page(ctx, name, ua):
         # The bare URL, as a reader requests it: a query string would skip the
         # page cache and test a page nobody is served.
         req = urllib.request.Request(PAGE_URL, headers={"User-Agent": ua})
-        with urllib.request.urlopen(req, timeout=ctx.timeout) as r:
+        with blog_reads.urlopen(req, timeout=ctx.timeout) as r:
             return r.read().decode("utf-8", "replace")
     raw = ctx.fetch(PAGE_URL + "#ua=" + name, ctx.timeout)
     return raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw
@@ -443,7 +448,7 @@ def _fetch_runs():
     url = f"{BASE}source-runs?days=2&per_page=200&cb={uuid.uuid4().hex[:12]}"
     req = urllib.request.Request(url, headers={"User-Agent": DESKTOP_UA,
                                                "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=40) as r:
+    with blog_reads.urlopen(req, timeout=40) as r:
         return json.load(r)
 
 

@@ -101,6 +101,11 @@ USAGE
 
 Env: WP_SITE_URL, ND_CACHE (downloaded-file cache dir).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import os
 import re
@@ -197,7 +202,7 @@ def _reraise_tls(exc):
 def _get(url, timeout=90):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with blog_reads.urlopen(req, timeout=timeout) as resp:
             return resp.read(MAX_BYTES)
     except (urllib.error.URLError, ssl.SSLError) as exc:
         _reraise_tls(exc)

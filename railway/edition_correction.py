@@ -9,6 +9,11 @@ note on the public page.
     WP_SITE_URL=... WP_API_KEY=... python3 railway/edition_correction.py \
         --freq weekly --slug 2026-W45 --note "..." [--apply]
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import argparse
 import html
 import os
@@ -67,8 +72,8 @@ def run(freq, slug, note, apply, site, key):
         return 1
     want = (html.escape(note, quote=False)[:80], note[:80])
     for attempt in range(4):
-        page = requests.get(edition_url(site, freq, slug), params={"cb": str(uuid.uuid4())},
-                            headers=UA, timeout=TIMEOUT)
+        page = blog_reads.get(edition_url(site, freq, slug), params={"cb": str(uuid.uuid4())},
+                            headers=UA, timeout=TIMEOUT, getter=requests.get)
         if any(w in page.text for w in want):
             break
         if attempt < 3:

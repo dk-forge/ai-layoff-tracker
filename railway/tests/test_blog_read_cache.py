@@ -54,7 +54,7 @@ class Budget(unittest.TestCase):
             cache.ReadCache(self.root, clock=self.clock).get(URL, fail)
         self.assertEqual(self.calls, 1)
 
-    def test_no_private_credentials_or_non_blog_hosts_are_eligible(self):
+    def test_only_public_responses_are_cacheable_but_all_bot_reads_are_limited(self):
         self.assertTrue(cache.eligible(URL, UA))
         for url, headers in [(URL, {**UA, 'Authorization': 'not-a-real-credential'}),
                              (URL, {**UA, 'Cookie': 'session=synthetic'}),
@@ -65,7 +65,7 @@ class Budget(unittest.TestCase):
                              ('https://other.example/blog/', UA),
                              (URL, {'User-Agent': 'OtherReader'})]:
             with self.subTest(url=url, headers=headers):
-                self.assertFalse(cache.eligible(url, headers))
+                self.assertFalse(cache.cacheable(url, headers))
 
     def test_cache_files_are_private_and_do_not_store_cookies(self):
         self.reader.get(URL, lambda: (200, {'Set-Cookie': 'synthetic=private'}, b'Public page'))
@@ -85,6 +85,26 @@ class Budget(unittest.TestCase):
         self.assertEqual(cache.urlopen(target, headers=UA, reader=self.reader, open_one=open_one).read(), b'<h1>Recorded page</h1>')
         self.assertEqual(calls, [URL, target])
 
+    def test_authenticated_api_reads_share_the_cap_without_replaying_a_batch(self):
+        import requests
+        api = 'https://asktherecruiter.com/blog/wp-json/layoffs/v1/query'
+        headers = {**UA, 'X-Layoff-API-Key': 'synthetic-key'}
+        calls = []
+        def fetch(url, **options):
+            calls.append(url)
+            response = requests.Response()
+            response.status_code = 200
+            response._content = b'{"rows":["synthetic-batch"]}'
+            return response
+        response = cache.get(api, headers=headers, params={'_fresh': 'one'}, getter=fetch, reader=self.reader)
+        self.assertIn('synthetic-batch', response.text)
+        with self.assertRaises(requests.RequestException):
+            cache.get(api, headers=headers, params={'_fresh': 'two'}, getter=fetch, reader=self.reader)
+        self.assertEqual(len(calls), 1)
+        stored = ''.join(p.read_text() for p in self.root.glob('*.json'))
+        self.assertNotIn('synthetic-key', stored)
+        self.assertNotIn('synthetic-batch', stored)
+
     def test_pinned_stream_opener_is_preserved_and_not_retried(self):
         calls = []
         def stream(request, timeout):
@@ -101,7 +121,7 @@ class Budget(unittest.TestCase):
         def stream(request, timeout):
             calls.append(request.full_url)
             return 'private response'
-        url = 'https://asktherecruiter.com/blog/wp-json/layoffs/v1/query'
+        url = 'https://other.example/blog/wp-json/layoffs/v1/query'
         self.assertEqual(cache.urlopen(url, headers=UA, stream_opener=stream), 'private response')
         self.assertEqual(calls, [url])
 
@@ -120,6 +140,21 @@ class Budget(unittest.TestCase):
         with patch.object(cache, 'ReadCache', return_value=self.reader):
             http_retry.get_with_retry(URL, headers=UA, get=get, sleep=lambda _: None)
         self.assertEqual(calls, [URL])
+
+    def test_authenticated_ops_panel_reports_a_limited_read_as_unknown(self):
+        import json
+        import ops_status
+        from unittest.mock import patch
+        with patch.object(cache, 'ReadCache', return_value=self.reader), \
+             patch.object(cache, '_open_one', return_value=(200, {'Content-Type': 'application/json'},
+                                                          json.dumps({'available': False}).encode())) as send, \
+             patch.dict('os.environ', {'WP_API_KEY': 'synthetic-key'}):
+            first = ' '.join(ops_status.subscriber_lines())
+            second = ' '.join(ops_status.subscriber_lines())
+        self.assertIn('cannot see', first)
+        self.assertIn('UNKNOWN', second)
+        self.assertIn('already attempted', second)
+        self.assertEqual(send.call_count, 1)
 
 
 if __name__ == '__main__':

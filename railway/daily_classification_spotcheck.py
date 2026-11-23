@@ -51,6 +51,11 @@ gets one mail per distinct backlog plus a fortnightly reminder, not one a day;
 and a run that holds nothing posts `resolve_scope` so a drained backlog stops
 reminding. Operator instructions: docs/RUNBOOK.md, "a label relabel was HELD".
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import os
 import signal
@@ -247,7 +252,7 @@ def request_json(url, payload=None, headers=None, attempts=3, timeout=120):
             if data is not None:
                 headers = {"Content-Type": "application/json", **headers}
             req = urllib.request.Request(url, data=data, headers=headers)
-            return json.load(urllib.request.urlopen(req, timeout=timeout))
+            return json.load(blog_reads.urlopen(req, timeout=timeout))
         except Deadline:
             raise
         except Exception as exc:

@@ -32,6 +32,11 @@ Pure stdlib, no keys, read-only.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import hashlib
 import json
 import ssl
@@ -132,7 +137,7 @@ def _resolve(name: str, kind: str) -> tuple[list[str] | None, str]:
     url = f"{_DOH}?" + urllib.parse.urlencode({"name": name, "type": kind})
     req = urllib.request.Request(url, headers={"Accept": "application/dns-json"})
     try:
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+        with blog_reads.urlopen(req, timeout=_TIMEOUT) as resp:
             body = json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, ssl.SSLError, TimeoutError, OSError) as exc:
         return None, f"resolver unreachable: {exc}"

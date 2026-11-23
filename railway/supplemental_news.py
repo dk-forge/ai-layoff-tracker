@@ -12,6 +12,11 @@ Ships DORMANT per provider: no key -> that provider is skipped. Add the secret
 
 Env: NEWSDATA_API_KEY, MARKETAUX_API_KEY, FINNHUB_API_KEY, SUPP_NEWS_DRY=1.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import csv
 import os
 import re
@@ -106,7 +111,7 @@ def pull_newsdata():
     out = []
     try:
         # /api/1/latest is the current free-tier endpoint (/api/1/news is legacy).
-        r = requests.get("https://newsdata.io/api/1/latest",
+        r = blog_reads.get("https://newsdata.io/api/1/latest", getter=requests.get,
                          params={"apikey": key, "q": NEWSDATA_Q,
                                  "language": "en,de,fr,es,it"}, headers=UA, timeout=30)
         body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
@@ -130,7 +135,7 @@ def pull_marketaux():
         return []
     out = []
     try:
-        r = requests.get("https://api.marketaux.com/v1/news/all",
+        r = blog_reads.get("https://api.marketaux.com/v1/news/all", getter=requests.get,
                          params={"api_token": key, "search": MARKETAUX_Q, "language": "en,de,fr,es,it",
                                  "filter_entities": "false", "limit": 3}, headers=UA, timeout=30)
         body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
@@ -162,7 +167,7 @@ def pull_finnhub():
     out = []
     for tk in todays:
         try:
-            r = requests.get("https://finnhub.io/api/v1/company-news",
+            r = blog_reads.get("https://finnhub.io/api/v1/company-news", getter=requests.get,
                              params={"symbol": tk, "from": frm, "to": to, "token": key},
                              headers=UA, timeout=30)
             items = r.json() if r.status_code == 200 else []

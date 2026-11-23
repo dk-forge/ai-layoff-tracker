@@ -14,6 +14,11 @@ turns red.
 Env: WP_SITE_URL (required), WP_API_KEY (to post the digest; optional for a
 read-only run), HEALTH_DIGEST_DRY=1.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import os
 import sys
 from datetime import datetime, timezone
@@ -166,7 +171,7 @@ def subscriber_line():
         return ("Subscribers UNKNOWN: no site URL or API key in this run, so the stats "
                 "route was not called. This is not a zero.")
     try:
-        r = requests.get(f"{site}/wp-json/layoffs/v1/subscriber-stats",
+        r = blog_reads.get(f"{site}/wp-json/layoffs/v1/subscriber-stats", getter=requests.get,
                          headers={"X-Layoff-API-Key": key, "User-Agent": UA["User-Agent"]},
                          timeout=25)
         data = r.json() if r.status_code == 200 else {}
@@ -343,7 +348,7 @@ def main():
         print("WP_SITE_URL required")
         return 1
     try:
-        r = requests.get(f"{SITE}/wp-json/layoffs/v1/source-health", headers=UA, timeout=40)
+        r = blog_reads.get(f"{SITE}/wp-json/layoffs/v1/source-health", getter=requests.get, headers=UA, timeout=40)
         health = r.json() if r.status_code == 200 else {}
     except Exception as exc:
         print(f"could not read source-health: {exc}")

@@ -38,6 +38,11 @@ USAGE
     python3 railway/warn_reference_set.py --measure   # frozen set vs the live API
     python3 railway/warn_reference_set.py --pack      # per-row adjudication sheet
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html as _html
 import json
 import re
@@ -266,7 +271,7 @@ def _get(url, ua=SITE_UA, timeout=90, accept=None):
     if accept:
         headers["Accept"] = accept
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with blog_reads.urlopen(req, timeout=timeout) as r:
         return r.read()
 
 
@@ -683,7 +688,7 @@ def _api(path, attempts=4):
                                      headers={"User-Agent": API_UA,
                                               "Accept": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=45) as r:
+            with blog_reads.urlopen(req, timeout=45) as r:
                 return json.loads(r.read())
         except Exception as exc:                                   # noqa: BLE001
             last = exc

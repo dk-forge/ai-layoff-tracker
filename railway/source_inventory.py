@@ -34,6 +34,11 @@ to add it here. `tests/test_source_freshness.py` pins that: a new id in the
 health page's registry is a new inventory row the same day.
 """
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import datetime as _dt
 import json
 import os
@@ -287,7 +292,7 @@ if __name__ == "__main__":
            + "/wp-json/layoffs/v1/source-health")
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
-        live = json.load(urllib.request.urlopen(req, timeout=45))
+        live = json.load(blog_reads.urlopen(req, timeout=45))
     except Exception as exc:                                  # noqa: BLE001
         print(f"UNKNOWN: could not read the health ledger ({exc})")
         raise SystemExit(3)

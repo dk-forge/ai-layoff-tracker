@@ -48,6 +48,11 @@ out of anything the API hands back before that text reaches a log.
 
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import json
 import os
@@ -126,7 +131,7 @@ def _request(method: str, path: str, body=None, extra_headers=None):
     req = urllib.request.Request(f"{API}{path}", data=data, headers=headers,
                                  method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with blog_reads.urlopen(req, timeout=30) as resp:
             raw = resp.read().decode("utf-8", "replace")
             try:
                 return resp.status, json.loads(raw or "{}")

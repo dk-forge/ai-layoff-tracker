@@ -244,10 +244,14 @@ def _send(method, url, data=None, headers=None, timeout=90):
     The single seam the tests replace, so the three outcomes can be exercised
     without a network and without a live outage to wait for.
     """
+    try:
+        import blog_read_cache as blog_reads
+    except ModuleNotFoundError:
+        from railway import blog_read_cache as blog_reads
     req = urllib.request.Request(url, data=data, headers=headers or {},
                                  method=method)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with blog_reads.urlopen(req, timeout=timeout) as resp:
             return resp.getcode(), resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         body = ""

@@ -35,6 +35,11 @@ Run:
   python3 -m py_compile railway/tracker_crosscheck.py
   WP_SITE_URL=... python3 railway/tracker_crosscheck.py path/to/reference.csv
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import csv
 import io
 import json
@@ -139,8 +144,8 @@ def query_our_tracker(company, from_date, to_date):
     if to_date:
         params["to"] = to_date
     try:
-        resp = requests.get(f"{site}/wp-json/layoffs/v1/query", params=params,
-                            headers=UA, timeout=TIMEOUT)
+        resp = blog_reads.get(f"{site}/wp-json/layoffs/v1/query", params=params,
+                            headers=UA, timeout=TIMEOUT, getter=requests.get)
         if resp.status_code != 200:
             return None  # None signals lookup FAILURE (distinct from [] = no rows)
         return resp.json().get("data", [])

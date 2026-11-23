@@ -26,6 +26,11 @@ tests/test_subscriber_watch.py. Only main() touches the network.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import json
 import math
 import os
@@ -265,7 +270,7 @@ def main(argv=None) -> int:  # pragma: no cover - network
                                  headers={"X-Layoff-API-Key": key,
                                           "User-Agent": "ai-layoff-tracker-subscriber-watch"})
     try:
-        with urllib.request.urlopen(req, timeout=25) as r:
+        with blog_reads.urlopen(req, timeout=25) as r:
             payload = json.loads(r.read().decode("utf-8"))
     except Exception as exc:
         print(f"Subscriber watch UNKNOWN: could not read the stats route ({type(exc).__name__}).")

@@ -25,6 +25,11 @@ Never merges across different companies, and never changes a job count.
 Env: WP_SITE_URL, WP_API_KEY, OPENROUTER_API_KEY.
 DEDUPE_MAX_CLUSTERS caps LLM calls per run (default 60) so cost stays bounded.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import os
 import re
@@ -438,7 +443,7 @@ def ask_llm(group):
             # the line, for one budget check.
             out = spend.metered_call(
                 MODEL,
-                lambda: json.load(urllib.request.urlopen(req, timeout=150)),
+                lambda: json.load(blog_reads.urlopen(req, timeout=150)),
                 what="an LLM dedup review")
             c = out["choices"][0]["message"]["content"]
             c = c[c.find("{"): c.rfind("}") + 1]
@@ -571,7 +576,7 @@ def _run():
                 data=json.dumps({"merges": batch,
                     "reason": "Daily cross-source dedup: same layoff event reported by multiple sources, confirmed by the configured adjudication model"}).encode(),
                 headers={"X-Layoff-API-Key": KEY, "Content-Type": "application/json", "User-Agent": UA})
-            res = json.load(urllib.request.urlopen(req, timeout=90))
+            res = json.load(blog_reads.urlopen(req, timeout=90))
             merged += len(res.get("merged_rows", []))
             print(res)
             records.extend(res.get("merged_records") or [])

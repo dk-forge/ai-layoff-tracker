@@ -1100,7 +1100,7 @@ def subscriber_lines():
             f"{BASE}/wp-json/layoffs/v1/subscriber-stats?cb={uuid.uuid4().hex[:8]}",
             headers={"User-Agent": UA, "Accept": "application/json",
                      "X-Layoff-API-Key": key})
-        data = json.loads(urllib.request.urlopen(req, timeout=30).read().decode())
+        data = json.loads(blog_reads.urlopen(req, timeout=30).read().decode())
     except Exception as exc:
         return [f"UNKNOWN - could not read /subscriber-stats ({exc}).",
                 "          Not a pass and not a zero: this run did not look."]

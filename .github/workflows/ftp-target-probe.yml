@@ -213,7 +213,8 @@ jobs:
           # authenticate, and CHEMICLOUD_FTP does not resolve.
           probe "FTP_HOST + CHEMICLOUD credentials " "$FTP_HOST" "$NEW_USER" "$NEW_PASS"
           echo
-          echo "The live site executes: $(curl -s -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("version"))')"
+          python3 railway/blog_read_cli.py "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" --output /tmp/alt-live-status.json || exit "$?"
+          echo "The live site executes: $(python3 -c 'import json;print(json.load(open("/tmp/alt-live-status.json")).get("version"))')"
           echo "This checkout builds:   $(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php | grep -oE '[0-9.]+$')"
 
       - name: Which tree does FTPS actually land in
@@ -347,5 +348,6 @@ jobs:
             rm -f probe.php
           done
           echo
-          echo "The live site currently executes: $(curl -s -A 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)' "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("version"))')"
+          python3 railway/blog_read_cli.py "https://asktherecruiter.com/blog/wp-json/layoffs/v1/status?cb=$RANDOM" --output /tmp/alt-live-status.json || exit "$?"
+          echo "The live site currently executes: $(python3 -c 'import json;print(json.load(open("/tmp/alt-live-status.json")).get("version"))')"
           echo "This checkout builds: $(grep -m1 -oE "ALT_VERSION', *'[0-9.]+" wordpress-plugin/ai-layoff-tracker/ai-layoff-tracker.php | grep -oE '[0-9.]+$')"

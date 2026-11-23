@@ -120,6 +120,11 @@ WHAT THE TREND MEANS, SO IT IS NOT JUST A TO-DO LIST.
 The two are recorded together under a versioned method (`c1`) so a trend line
 can never silently splice two definitions of the same percentage.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import os
 import pathlib
@@ -403,9 +408,9 @@ def our_rows(token, timeout=30):
     # answer" (2026-09-04). Absence of configuration is not absence of an answer.
     site = require_site_url()
     try:
-        r = requests.get(f"{site}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{site}/wp-json/layoffs/v1/query",
                          params={"company": token, "per_page": 50},
-                         headers=UA, timeout=timeout)
+                         headers=UA, timeout=timeout, getter=requests.get)
         if r.status_code != 200:
             return None
         return r.json().get("data") or []
@@ -456,7 +461,7 @@ def search_open_press(token, timeout=30):
     from sources.google_news import _rss_url, _parse_items, UA as GN_UA
     from company_watchlist import query_for
     try:
-        r = requests.get(_rss_url(query_for(token)), headers=GN_UA, timeout=timeout)
+        r = blog_reads.get(_rss_url(query_for(token)), headers=GN_UA, timeout=timeout, getter=requests.get)
         if r.status_code != 200:
             return None
         items = _parse_items(r.text)

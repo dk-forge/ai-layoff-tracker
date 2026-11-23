@@ -125,7 +125,7 @@ def check_pages():
 def check_sources():
     """Sample recent rows' source_url; report the broken rate (informational)."""
     try:
-        r = requests.get(f"{SITE}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{SITE}/wp-json/layoffs/v1/query", getter=requests.get,
                          params={"per_page": SAMPLE, "sort": "layoff_date", "dir": "desc",
                                  "cb": "linkcheck"}, headers=UA, timeout=40)
         rows = r.json().get("data", []) if r.status_code == 200 else []

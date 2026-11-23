@@ -56,6 +56,11 @@ within a day. That is the cadence erm-provenance-check.yml actually runs at,
 and a ceiling a job cannot meet is not a monitor, it is noise that hides real
 breakage.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import argparse
 import json
 import re
@@ -138,7 +143,7 @@ def _get(url, tries=4):
     for i in range(tries):
         try:
             req = urllib.request.Request(url, headers=UA)
-            return json.loads(urllib.request.urlopen(req, timeout=TIMEOUT).read())
+            return json.loads(blog_reads.urlopen(req, timeout=TIMEOUT).read())
         except Exception as e:                                  # noqa: BLE001
             last = e
             time.sleep(2 + 3 * i)

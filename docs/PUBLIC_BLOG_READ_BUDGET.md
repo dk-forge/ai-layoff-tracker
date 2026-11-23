@@ -1,42 +1,50 @@
-# Public blog read budget
+# Tracker bot read budget
 
-Anonymous `AiLayoffTracker/1.0` reads of asktherecruiter.com/blog pages share a
-one-hour disk cache and per-URL process lock. A pending marker is written before
-network access. Failures also spend the budget, so retries cannot multiply load.
-Cache-busting parameters do not create a new budget; real filters still do.
-Redirects are checked one hop at a time by buffered clients. Streaming probes
-retain their original size limits and transport, spend the budget and fail
-explicitly on repetition rather than inventing an empty cached response.
+Every AiLayoffTracker/1.0 GET or HEAD to asktherecruiter.com/blog, including
+keyed API reads, spends the same one-hour per-URL disk budget. An atomic pending
+marker and a process lock prevent concurrent reads and repeat attempts after a
+failure. Cache-busting and credential query parameters cannot mint a new budget.
+Real filters and page numbers still identify different URLs.
 
-The common requests retry helper, safe fetcher, link checker, page-weight check,
-ops page reads and pinned endpoint probe use this budget. Challenge-cookie
-replays are disabled for these public page reads. SSRF checks and DNS pinning
-remain in their original callers. No network request is made by the unit tests.
+Anonymous public page responses are cached. API, authenticated and token-bearing
+responses are never persisted or replayed: another read in the hour is explicitly
+limited. This can defer overlapping ingestion jobs. It does not give ingestion an
+old batch to process again. Keyed reads keep a fresh edge-cache query parameter
+for the first permitted request; that parameter does not evade the hourly cap.
 
-## Scope and operations
+The cache stores hashes, timing and response state. Private bodies, raw URLs and
+credentials are not written. Public responses drop Set-Cookie. Buffered clients
+check redirects hop by hop. Streaming and pinned probes retain their original
+transport and read cap, and repeated probes fail instead of getting fake content.
+Requests and urllib clients keep separate representation variants in one URL
+budget. No stale response is substituted after a transport failure.
 
-The cache is under `~/.cache/alt-public-pages`, or `ALT_BLOG_CACHE_DIR` when set.
-It must be private to the worker owner and retained between runs. Workers sharing
-that directory share the cap. Separate machines with separate filesystems do not;
-operators must use a shared persistent directory or a single worker before
-claiming a cross-machine cap. This PR does not change production configuration.
+## Coverage
 
-Authenticated requests, WordPress API/admin routes, browser-user-agent probes,
-writes and third-party source collection are unchanged. Ingestion intentionally
-uses fresh keyed API responses to avoid reprocessing old batches. Extending the
-cap to those reads needs an ingestion freshness decision. The static parity
-checker's separate manual-job cache is not unified by this change.
+The common retry/host-call helpers, direct host-capable Python clients, public
+page checks and explicit workflow GETs use the budget. The workflow CLI reads keys
+from the named environment variable, never command-line values. It removes an old
+output before reading and exits 75 on a spent budget. Quarterly snapshot creation
+stops on a limited read instead of mistaking it for a missing report. POST, PUT,
+PATCH and DELETE behavior is unchanged. External sources and browser-user-agent
+probes are outside the AiLayoffTracker bot policy.
 
-Private headers and secret query parameters are excluded. Public cached responses
-never retain Set-Cookie headers. Request headers and raw URLs are not written to
-the cache. Transport representations use separate variants within the same URL
-budget: a variant mismatch stops the read rather than sending a second request.
+## Worker coordination
+
+The default directory is ~/.cache/alt-public-pages. ALT_BLOG_CACHE_DIR can point
+to an existing private persistent directory. Workers sharing it share the cap;
+independent filesystems do not. A single worker or shared persistent cache is
+required for a global cap across machines. This PR does not configure or deploy
+that storage. The manual static-parity workflow is a separate PR and must share
+this budget before both checks are operated on the same worker.
 
 ## Validation and rollback
 
-Run `cd railway && python -m unittest tests.test_blog_read_cache
- tests.test_collector_backoff tests.test_ssrf_safe_fetch tests.test_endpoint_check
- tests.test_deploy_reaches_readers -q` on one line. The tests use fake transports,
-a temporary cache and an injected clock, including the exact hourly boundary.
-Revert the change to restore the previous clients. No deployment or host changes
-are part of this PR.
+The new tests use temporary caches, fake transports and an injected clock,
+including the exact hourly boundary, concurrent workers, failed attempts,
+authenticated batch refusal and workflow output cleanup. A runtime netblock test
+proves the cache contracts send no live traffic. Existing reporting tests retain
+their assertions while injecting the new transport boundary.
+
+Revert this change to restore the original clients. No production configuration,
+deployment, DNS, email send or paid-service call is part of the change.

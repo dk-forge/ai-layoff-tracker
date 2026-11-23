@@ -36,6 +36,11 @@ that the money has to be authorised first: see the run banner. Until it is,
 
 Env: none required. GDELT's public API needs no key.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import re
 import sys
@@ -94,7 +99,7 @@ def _gdelt(query, start, end, max_records=75):
     req = urllib.request.Request(url, headers={"User-Agent": BROWSER_UA})
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(req, timeout=45) as r:
+            with blog_reads.urlopen(req, timeout=45) as r:
                 body = r.read()
             return json.loads(body).get("articles", []) or [], None
         except Exception as exc:                                   # noqa: BLE001
@@ -141,7 +146,7 @@ def _loose_tracker_probe(event):
                                                "Accept": "application/json"})
     lo, hi = event["match_window"]
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with blog_reads.urlopen(req, timeout=30) as r:
             rows = (json.loads(r.read()) or {}).get("data") or []
     except Exception:                                              # noqa: BLE001
         return None                                                 # UNKNOWN

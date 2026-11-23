@@ -15,6 +15,11 @@ unreachable publisher or model cannot consume the GitHub Actions hard limit.
 SAFE TO DEFER: the queue is `legacy_unreviewed` rows on the server, a row stays
 queued until it is written, and the batch is re-derived from scratch each run.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html
 import os
 import re
@@ -60,7 +65,7 @@ MIN_ATTEMPTED_FOR_ALARM = 3
 def fetch_text(url):
     if not url.startswith(("http://", "https://")):
         return ""
-    response = requests.get(url, headers={"User-Agent": UA}, timeout=30)
+    response = blog_reads.get(url, headers={"User-Agent": UA}, timeout=30, getter=requests.get)
     response.raise_for_status()
     return clean_html(response.content[:2_000_000].decode(response.encoding or "utf-8", errors="replace"))
 

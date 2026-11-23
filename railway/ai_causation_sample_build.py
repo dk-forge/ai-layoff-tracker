@@ -71,6 +71,11 @@ same rows and not against a fresh draw that happens to be kinder.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import hashlib
 import json
@@ -126,7 +131,7 @@ MIN_TEXT_CHARS = 40
 def _get(path, **params):
     url = BASE + path + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=90) as resp:
+    with blog_reads.urlopen(req, timeout=90) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 

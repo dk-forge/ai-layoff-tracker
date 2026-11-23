@@ -66,6 +66,11 @@ USAGE
                                                  # the plugin's render copy (one
                                                  # writer: write_measurement)
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import math
 import re
@@ -190,7 +195,7 @@ def name_matches(alias, company_name):
 def _default_fetch(url, timeout=30):
     req = urllib.request.Request(url, headers={"User-Agent": UA,
                                                "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with blog_reads.urlopen(req, timeout=timeout) as r:
         return r.read()
 
 

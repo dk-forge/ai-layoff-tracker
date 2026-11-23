@@ -24,6 +24,11 @@ days the WHOLE list is walked — not just the first slice each time.
 Env: BENCHMARK_FEED_URLS, BENCHMARK_COMPANIES (secrets), TRACKER_DIFF_MAX
 (default 40 companies per run), TRACKER_DIFF_DRY=1 (log, don't post).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import csv
 import io
 import json
@@ -103,7 +108,7 @@ def _parse_feed(url, label):
     Reference the feed only by its index `label`.
     """
     try:
-        r = requests.get(url, headers=UA, timeout=40)
+        r = blog_reads.get(url, getter=requests.get, headers=UA, timeout=40)
         if r.status_code != 200:
             print(f"feed {label}: HTTP {r.status_code}")
             return []
@@ -127,7 +132,7 @@ def _parse_feed(url, label):
         if child_maps and not re.search(r"/(tag|company)/[^/]+/?$", locs[0] if locs else ""):
             for cu in child_maps:
                 try:
-                    cr = requests.get(cu, headers=UA, timeout=40)
+                    cr = blog_reads.get(cu, getter=requests.get, headers=UA, timeout=40)
                     if cr.status_code == 200:
                         locs += re.findall(r"<loc>\s*([^<]+?)\s*</loc>", cr.text, re.I)
                 except Exception:
@@ -938,7 +943,7 @@ def _learn_fetch(query, start, end):
               "enddatetime": end.strftime("%Y%m%d%H%M%S")}
     for attempt in range(LEARN_QUERY_ATTEMPTS):
         try:
-            resp = requests.get(gdelt.GDELT_URL, params=params,
+            resp = blog_reads.get(gdelt.GDELT_URL, getter=requests.get, params=params,
                                 headers={"User-Agent": gdelt.BROWSER_UA}, timeout=45)
         except Exception:
             continue                      # transport: retry, then UNKNOWN
@@ -1149,7 +1154,7 @@ def _our_rows(token, timeout=30):
     # that never happened (2026-09-04, a held item scored UNKNOWN this way).
     site = require_site_url()
     try:
-        r = requests.get(f"{site}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{site}/wp-json/layoffs/v1/query", getter=requests.get,
                          params={"company": token, "per_page": 50},
                          headers=UA, timeout=timeout)
         if r.status_code != 200:

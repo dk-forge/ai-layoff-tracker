@@ -15,6 +15,11 @@ Env: COURTLISTENER_API_KEY, COMPANIES_HOUSE_API_KEY_UK,
      DISTRESS_DAYS_BACK (default 30), DISTRESS_MAX (companies/run, default 40),
      DISTRESS_DRY=1 to log candidates without posting.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import os
 import re
 import sys
@@ -65,8 +70,8 @@ def courtlistener_debtors():
     frm = (date.today() - timedelta(days=DAYS_BACK)).isoformat()
     out, seen = [], set()
     try:
-        r = requests.get(
-            "https://www.courtlistener.com/api/rest/v4/search/",
+        r = blog_reads.get(
+            "https://www.courtlistener.com/api/rest/v4/search/", getter=requests.get,
             params={"type": "r", "q": '"chapter 11" OR "chapter 7"',
                     "filed_after": frm, "order_by": "dateFiled desc"},
             headers={**UA, "Authorization": f"Token {key}"}, timeout=40)
@@ -103,8 +108,8 @@ def companies_house_insolvent():
     # Advanced search by status; HTTP Basic auth = key as username, blank password.
     for status in ("administration", "liquidation", "insolvency-proceedings"):
         try:
-            r = requests.get(
-                "https://api.company-information.service.gov.uk/advanced-search/companies",
+            r = blog_reads.get(
+                "https://api.company-information.service.gov.uk/advanced-search/companies", getter=requests.get,
                 params={"company_status": status, "size": 100},
                 auth=(key, ""), headers=UA, timeout=40)
             if r.status_code != 200:

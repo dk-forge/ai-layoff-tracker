@@ -70,6 +70,11 @@ correction that silently did nothing can never be reported as applied.
 Add --apply to actually write; without it the run is a DRY RUN that only shows
 what would change.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import argparse
 import hashlib
 import json
@@ -104,10 +109,10 @@ def _rows_for(site, company):
         # cb= is not optional: /query responses are cached, and a stale hit
         # made the first real correction report "STILL PRESENT" after the row
         # had in fact been trashed — a false alarm on a fail-loudly check.
-        r = requests.get(f"{site}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{site}/wp-json/layoffs/v1/query",
                          params={"company": company, "per_page": 200,
                                  "cb": str(uuid.uuid4())},
-                         headers=UA, timeout=TIMEOUT)
+                         headers=UA, timeout=TIMEOUT, getter=requests.get)
         if r.status_code != 200:
             return {}
         return {int(x["id"]): x for x in r.json().get("data", []) if x.get("id")}
@@ -120,8 +125,8 @@ def _event_sources(site, row_id):
     when the read failed - None is UNKNOWN and is printed as such, never as
     "no sources"."""
     try:
-        r = requests.get(f"{site}/wp-json/layoffs/v1/event/{int(row_id)}/sources",
-                         params={"cb": str(uuid.uuid4())}, headers=UA, timeout=TIMEOUT)
+        r = blog_reads.get(f"{site}/wp-json/layoffs/v1/event/{int(row_id)}/sources",
+                         params={"cb": str(uuid.uuid4())}, headers=UA, timeout=TIMEOUT, getter=requests.get)
         if r.status_code != 200:
             return None
         return list(r.json().get("sources") or [])
@@ -132,8 +137,8 @@ def _event_sources(site, row_id):
 def _totals(site):
     """The published worldwide headline (jobs, entries), or None when unread."""
     try:
-        r = requests.get(f"{site}/wp-json/layoffs/v1/aggregate",
-                         params={"cb": str(uuid.uuid4())}, headers=UA, timeout=TIMEOUT)
+        r = blog_reads.get(f"{site}/wp-json/layoffs/v1/aggregate",
+                         params={"cb": str(uuid.uuid4())}, headers=UA, timeout=TIMEOUT, getter=requests.get)
         if r.status_code != 200:
             return None
         t = r.json().get("totals") or {}
@@ -255,9 +260,9 @@ def _rows_q(site, company):
     """Rows matching q=<company>, keyed by id, or None when the read failed.
     None is UNKNOWN and is never read as "no such rows"."""
     try:
-        r = requests.get(f"{site}/wp-json/layoffs/v1/query",
+        r = blog_reads.get(f"{site}/wp-json/layoffs/v1/query",
                          params={"q": company, "per_page": 200, "cb": str(uuid.uuid4())},
-                         headers=UA, timeout=TIMEOUT)
+                         headers=UA, timeout=TIMEOUT, getter=requests.get)
         if r.status_code != 200:
             return None
         return {int(x["id"]): x for x in r.json().get("data", []) if x.get("id")}

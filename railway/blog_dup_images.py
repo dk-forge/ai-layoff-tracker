@@ -5,6 +5,11 @@ DRY_RUN=1 (default) only lists; DRY_RUN=0 rewrites the matched posts. Emits
 GitHub annotations: one summary `dup-images` notice and one per post. The key
 is read from WP_API_KEY and never printed.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import json
 import os
 import sys
@@ -33,7 +38,7 @@ def main():
     req = urllib.request.Request(
         URL + ("" if dry_run else "?apply=1"), method="GET" if dry_run else "POST",
         headers={"X-Layoff-API-Key": key, "User-Agent": "AiLayoffTracker/1.0 (+https://asktherecruiter.com)"})
-    with urllib.request.urlopen(req, timeout=120) as r:
+    with blog_reads.urlopen(req, timeout=120) as r:
         data = json.load(r)
     for line in notices(data, dry_run):
         print(line)

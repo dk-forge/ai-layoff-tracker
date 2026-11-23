@@ -54,6 +54,11 @@ address is involved, no key is needed, and no response body is echoed.
 
 Stdlib only, no keys, safe to run from anywhere.
 """
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import secrets
 import sys
 import urllib.error
@@ -159,7 +164,7 @@ def _request(url, method="GET", data=None, timeout=TIMEOUT_S):
 
     opener = urllib.request.build_opener(_NoRedirect)
     try:
-        with opener.open(req, timeout=timeout) as resp:
+        with blog_reads.urlopen(req, timeout=timeout, stream_opener=opener.open) as resp:
             return resp.status, resp.headers.get("Location", ""), resp.read(4096)
     except urllib.error.HTTPError as exc:
         with exc:

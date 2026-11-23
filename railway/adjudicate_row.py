@@ -31,6 +31,11 @@ unreadable evidence, spec written for a human); 1 a hard failure.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import datetime as _dt
 import html as _html
@@ -143,7 +148,7 @@ def fetch_evidence(url: str, timeout: int = 15) -> str:
         return ""
     try:
         req = urllib.request.Request(url, headers=UA)
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with blog_reads.urlopen(req, timeout=timeout) as resp:
             raw = resp.read(400_000).decode("utf-8", "replace")
     except Exception as exc:  # noqa: BLE001 - any failure is "unreadable", reported not raised
         print(f"  evidence: could not read {url[:80]} ({type(exc).__name__})")

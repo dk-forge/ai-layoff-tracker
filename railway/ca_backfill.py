@@ -39,6 +39,11 @@ Run:
   WP_SITE_URL=... WP_API_KEY=... python3 railway/ca_backfill.py
   CA_BACKFILL_DRY_RUN=1 python3 railway/ca_backfill.py   # parse only
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import io
 import os
 import re
@@ -175,7 +180,7 @@ def _entries_from_pdf(content, url):
 def _fetch(url):
     """Download a PDF; return bytes or None (fail-isolated, never fatal alone)."""
     try:
-        resp = requests.get(url, headers=UA, timeout=max(TIMEOUT, 90))
+        resp = blog_reads.get(url, headers=UA, timeout=max(TIMEOUT, 90), getter=requests.get)
     except Exception as exc:
         print(f"  {url.rsplit('/', 1)[-1]}: fetch error ({exc})")
         return None

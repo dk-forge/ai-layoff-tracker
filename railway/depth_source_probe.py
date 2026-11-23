@@ -21,6 +21,11 @@ unit-tested offline.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import csv
 import datetime as dt
@@ -181,7 +186,7 @@ def get(url: str, data: bytes | None = None, headers: dict | None = None, timeou
     h.update(headers or {})
     req = urllib.request.Request(url, data=data, headers=h)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with blog_reads.urlopen(req, timeout=timeout) as r:
             return r.status, (r.read(limit) if limit else r.read())
     except urllib.error.HTTPError as e:
         return e.code, e.read()[:500]
@@ -192,7 +197,7 @@ def get(url: str, data: bytes | None = None, headers: dict | None = None, timeou
 def head_size(url: str) -> int | None:
     req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with blog_reads.urlopen(req, timeout=30) as r:
             v = r.headers.get("Content-Length")
             return int(v) if v else None
     except Exception:  # noqa: BLE001
