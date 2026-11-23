@@ -12,3 +12,7 @@ The standalone state widget now keeps a named, UTM-tagged link to the free
 match check on phone and desktop. Existing source attribution and figures
 are retained. The launch review records the already merged code fixes and
 separates the remaining operator settings from code. No deployment occurs.
+
+The publisher-generated iframe now reserves 280px so its CTA stays fully
+visible without inner scrolling. The actual builder output is measured at
+320px, 390px and desktop width.

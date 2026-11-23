@@ -110,7 +110,7 @@
       trackerUrl.searchParams.set('years', year.value); trackerUrl.searchParams.set('country', 'United States');
       if (selectedState) trackerUrl.searchParams.set('state', selectedState);
       const scope = selectedState ? selectedState : 'United States';
-      code.value = `<iframe src="${widgetUrl.toString()}" title="${scope} layoff tracker widget, ${year.value}" loading="lazy" style="width:100%;max-width:420px;height:220px;border:0"></iframe>`;
+      code.value = `<iframe src="${widgetUrl.toString()}" title="${scope} layoff tracker widget, ${year.value}" loading="lazy" style="width:100%;max-width:420px;height:280px;border:0"></iframe>`;
       tracker.href = trackerUrl.toString();
       status.textContent = '';
     };

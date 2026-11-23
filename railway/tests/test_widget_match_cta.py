@@ -18,9 +18,8 @@ class Anchors(HTMLParser):
             self.links.append(dict(attrs))
 
 
-class WidgetMatchCta(unittest.TestCase):
-    def test_rendered_widget_has_tagged_free_match_link(self):
-        stubs = r'''
+def widget_document():
+    stubs = r'''
 define('ABSPATH', '/'); define('ALT_VERSION', 'test');
 define('ALT_PLUGIN_URL', 'https://example.org/plugin/');
 function add_action(){} function language_attributes(){echo 'lang="en"';}
@@ -33,17 +32,23 @@ function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function add_query_arg($args,$url){return $url.'?'.http_build_query($args);}
 function alt_resume_cta_base(){return 'https://asktherecruiter.com';}
 '''
-        script = stubs + f"require '{PLUGIN}/includes/atr-signup-cta.php'; require '{PLUGIN}/templates/page-widget.php';"
-        result = subprocess.run(["php", "-r", script], check=True, capture_output=True, text=True)
+    script = stubs + f"require '{PLUGIN}/includes/atr-signup-cta.php'; require '{PLUGIN}/templates/page-widget.php';"
+    result = subprocess.run(["php", "-r", script], check=True, capture_output=True, text=True)
+    return result.stdout
+
+
+class WidgetMatchCta(unittest.TestCase):
+    def test_rendered_widget_has_tagged_free_match_link(self):
+        document = widget_document()
         parser = Anchors()
-        parser.feed(result.stdout)
+        parser.feed(document)
         links = [a for a in parser.links if "alt-widget-cta" in a.get("class", "").split()]
         self.assertEqual(len(links), 1)
         url = urlsplit(links[0]["href"])
         self.assertEqual((url.netloc, url.path), ("asktherecruiter.com", "/resume-score"))
         self.assertEqual(parse_qs(url.query), {"utm_source": ["ai-layoff-tracker"],
                                              "utm_medium": ["referral"], "utm_campaign": ["widget"]})
-        self.assertIn("Check my match, free", result.stdout)
+        self.assertIn("Check my match, free", document)
         css = (PLUGIN / "assets/widget.css").read_text()
         self.assertIn(".alt-widget-cta", css)
         self.assertIn("min-height:44px", css.replace(" ", ""))
