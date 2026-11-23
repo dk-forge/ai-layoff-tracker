@@ -1,3 +1,15 @@
+## 2026-11-23 - Public endpoint budgets, review only
+
+Added shared per-peer and WordPress-user limits before public REST callbacks and
+anonymous download/form actions. A named-lock-protected option counter survives
+response-cache flushes and stores only salted identifiers plus expiry/count.
+Failures stop work; the shared quota returns 429 with a retry hint. Existing tighter
+limits and signed consent withdrawal remain unchanged. No deployment, data edits,
+email sends or host configuration changes were performed.
+
+**Class:** absent-read-as-ok
+**Guard:** railway/tests/test_public_rate_limits.py; docs/PUBLIC_ENDPOINT_LIMITS.md.
+
 ## 2026-11-23 - Weekly benchmark: layoff 18/25; prefilter keeps "cutting N others" and "voluntary departures"
 
 **What.** `docs/benchmarks/2026-11-23.md`, scored live on 2026-11-23 (deferred from 11-22 by the host outage). Strict recall 18/25 (last week 19/25, different list). Seven misses: 4 no row (Dutch government, Olympus, NatWest, Renault; all non-US), 3 wrong count (Volvo Cars, Ecco, Children's Place). Median time to listing 3 days. No ranking is claimed; no competitor was run. For Renault (2026-11-17) three of the real Google News headlines, "cutting 1,000 others" and "1,000 voluntary departures", named no workforce noun and the free title prefilter dropped them; `HEADCOUNT_PATTERN` now keeps them. Other Renault and NatWest headlines already passed the prefilter and still made no row, so the downstream cause is open. No spend, no backfill, no plugin change, no deploy.
