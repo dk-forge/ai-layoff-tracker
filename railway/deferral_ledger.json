@@ -42,6 +42,16 @@
     },
     {
       "consecutive": 1,
+      "first_deferred_at": "2026-11-23T04:44:48+00:00",
+      "job": "reason-backfill",
+      "last_deferred_at": "2026-11-23T04:44:48+00:00",
+      "last_key": "45113584187:1",
+      "last_reason": "the source-health ledger would not accept the 'running' note for reason_backfill; nothing was attempted",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45113584187",
+      "state": "pending"
+    },
+    {
+      "consecutive": 1,
       "first_deferred_at": "2026-08-13T23:59:11+00:00",
       "job": "archive-backfill",
       "last_deferred_at": "2026-08-13T23:59:11+00:00",
@@ -239,6 +249,6 @@
       "state": "resolved"
     }
   ],
-  "updated_at": "2026-11-23T04:32:04+00:00",
+  "updated_at": "2026-11-23T04:44:48+00:00",
   "version": 1
 }
