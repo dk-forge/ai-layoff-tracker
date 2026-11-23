@@ -189,8 +189,10 @@ def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backo
             if attempt < attempts - 1:
                 if authenticated:
                     blog_reads.auth_reads.RUN.count('authenticated_api', 'retries')
-                asked = retry_after_seconds(r)
-                sleep(asked if asked is not None else backoff * (2 ** attempt if authenticated else attempt + 1))
+                delay = backoff * (2 ** attempt if authenticated else attempt + 1)
+                asked = retry_after_seconds(r, cap=60 if authenticated else RETRY_AFTER_CAP_SECONDS)
+                sleep(max(delay, asked) if authenticated and asked is not None
+                      else asked if asked is not None else delay)
                 continue
             return None
         except exc_types:
@@ -270,6 +272,8 @@ def _send(method, url, data=None, headers=None, timeout=90):
         return exc.code, body
     except urllib.error.URLError as exc:
         raise Unreachable(str(exc.reason)) from exc
+    except blog_reads.auth_reads.RequestBudgetExceeded:
+        raise
     except (OSError, ValueError) as exc:
         raise Unreachable(str(exc)) from exc
 
@@ -289,9 +293,17 @@ def call_with_retry(url, *, method="POST", data=None, headers=None, timeout=90,
     sent_headers = dict(DEFAULT_UA)
     sent_headers.update(headers or {})
 
+    try:
+        import authenticated_blog_reads as auth_reads
+    except ModuleNotFoundError:
+        from railway import authenticated_blog_reads as auth_reads
+    authenticated = method.upper() in ('GET', 'HEAD') and auth_reads.authenticated(url, sent_headers)
+    retried = TRANSIENT | set(range(500, 600)) if authenticated else TRANSIENT
     detail = "no attempt was made"
     for delay in (None,) + tuple(backoff):
         if delay is not None:
+            if authenticated:
+                auth_reads.RUN.count('authenticated_api', 'retries')
             print(f"  {url} did not answer ({detail}): retrying in {delay}s")
             sleep(delay)
         try:
@@ -309,7 +321,7 @@ def call_with_retry(url, *, method="POST", data=None, headers=None, timeout=90,
         except Unreachable as exc:
             detail = f"could not reach the host: {exc}"
             continue
-        if status in TRANSIENT:
+        if status in retried:
             detail = f"HTTP {status} from the host: {body.strip()[:200]}"
             continue
         if 200 <= status < 400:

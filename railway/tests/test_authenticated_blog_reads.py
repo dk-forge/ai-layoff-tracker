@@ -141,3 +141,21 @@ class AuthenticatedReads(unittest.TestCase):
                 pages.get(API, headers=HEADERS, getter=fetch)
         self.assertEqual(calls, [1])
         self.assertEqual(policy.report()['authenticated_api']['budget_refusals'], 1)
+
+    def test_stdlib_retry_helper_retries_all_authenticated_5xx(self):
+        import authenticated_blog_reads as auth
+        import http_retry
+        delays = []
+        policy = auth.RunBudget(limit=3, sleep=lambda _: self.fail('nested retry loop'))
+        calls = []
+        def transport(req, **options):
+            calls.append(req.full_url)
+            if len(calls) < 3:
+                raise HTTPError(req.full_url, 501 if len(calls) == 1 else 599, 'busy', {}, io.BytesIO(b'busy'))
+            return pages.addinfourl(io.BytesIO(b'fresh'), {}, req.full_url, 200)
+        with patch.object(auth, 'RUN', policy), patch('urllib.request.urlopen', side_effect=transport):
+            result = http_retry.call_with_retry(API, method='GET', headers=HEADERS, sleep=delays.append)
+        self.assertEqual(result.outcome, http_retry.OK)
+        self.assertEqual(delays, [3, 12])
+        self.assertEqual(policy.report()['authenticated_api']['requests'], 3)
+        self.assertEqual(policy.report()['authenticated_api']['retries'], 2)
