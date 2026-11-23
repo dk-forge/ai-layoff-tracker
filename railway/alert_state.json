@@ -142,6 +142,11 @@
       "last": 1795357663,
       "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: could not reach the live site (The read operation timed out) \u2014 this head"
     },
+    "live-surface-check:live.data:ed2b7d92e283d6b7": {
+      "first": 1795401078,
+      "last": 1795401078,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: Spirit Airlines counts once (news vs WARN): live API returned HTTP 500 \u2014 server regression, not a blip"
+    },
     "live-surface-check:live.data:feb152844d9e6171": {
       "first": 1795206470,
       "last": 1795206470,
@@ -183,6 +188,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-22T23:42:14+00:00",
+  "updated_at": "2026-11-23T02:31:19+00:00",
   "version": 1
 }
