@@ -67,11 +67,15 @@ class Metadata(HTMLParser):
             anchor = self.anchor
             url = urlsplit(urljoin(self.url, anchor['href']))
             query = parse_qs(url.query)
-            named = bool((''.join(anchor['text']) or anchor['label']).strip())
+            label = (' '.join(anchor['text']) or anchor['label']).strip().lower()
+            action = (bool(re.search(r'\b(?:match|resume|fit)\b', label))
+                      and bool(re.search(r'\b(?:check|score|tailor)\b', label)))
+            action = action or (bool(re.search(r'\bfree\b', label))
+                                and bool(re.search(r'\b(?:start|sign up)\b', label)))
             if (url.scheme == 'https' and url.netloc == 'asktherecruiter.com'
                     and url.path in ('/', '/resume-score', '/resume-score/')
                     and all(query.get(key, [''])[0].strip() for key in ('utm_source', 'utm_medium', 'utm_campaign'))
-                    and named and not anchor['hidden']):
+                    and action and not anchor['hidden']):
                 self.cta = True
             self.anchor = None
         for index in range(len(self.stack) - 1, -1, -1):

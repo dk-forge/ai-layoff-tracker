@@ -25,7 +25,7 @@ CTAs, invalid JSON-LD, metadata differences, unreachable live pages, unreadable
 sitemaps and incomplete comparisons all exit nonzero. The JSON report is still
 written. An empty inventory never passes.
 
-The CTA must be named and point to the free homepage or resume-score flow on
+The CTA must be action-labelled and point to the free homepage or resume-score flow on
 Ask The Recruiter, with source, medium and campaign UTM tags. HTML-hidden
 anchors do not count. This is a markup check, not computed CSS visibility;
 phone and desktop browser layout tests remain necessary.
