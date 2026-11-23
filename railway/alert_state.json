@@ -157,6 +157,11 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "page-weight-budget:main:3eb4d7f49ee7d7ab": {
+      "first": 1795411858,
+      "last": 1795411858,
+      "subject": "CI RED: Page weight budget \u2014 UNKNOWN https://asktherecruiter.com/blog/ai-layoff-tracker/: HTTPError: HTTP Error 500: Internal Server Error"
+    },
     "retained-evidence-hash-backfill:main:fe84be10b55b0285": {
       "first": 1795372721,
       "last": 1795372721,
@@ -188,6 +193,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-23T02:31:19+00:00",
+  "updated_at": "2026-11-23T05:30:59+00:00",
   "version": 1
 }
