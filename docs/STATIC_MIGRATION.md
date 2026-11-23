@@ -1,6 +1,6 @@
 # AI Layoff Tracker static migration
 
-Status: audit and offline build contract. Production URL and SEO parity are
+Status: preview build and offline snapshot contract. Production URL and SEO parity are
 blocked on a published-page snapshot. This is not a deploy or cutover approval.
 Scope: dk-forge/todo#2880, ALT first. Talent Intelligence Tracker is a later pilot.
 
@@ -156,3 +156,31 @@ mail delivery or service variable is changed by this work. Preview deployment
 and cutover remain separate owner-controlled steps. Rollback is to keep the
 existing site and remove the future Pages route; retain WordPress for 30 days
 after the later approved cutover.
+
+## Build-only preview, 23 November 2026
+
+`python railway/static_preview.py --out dist` downloads only the public layoffs
+and company-directory assets from the GitHub release named by
+`railway/backup_state.json`. It verifies the decompressed JSONL checksums,
+which is how the existing backup exporter records them. No WordPress request,
+private data, credentials or model call is needed. `--backups DIR` instead
+uses already downloaded assets and makes the build fully offline.
+
+The preview includes the hub, the company directory and recorded company
+slugs that have verified, non-superset rows. It does not reclassify a record.
+It displays source rows and their stated counts, not an aggregate or a claim
+that this reviewed subset represents all layoffs. Only company, date, country,
+job count and public source URL enter the generated row projection.
+
+Every page labels itself Preview, states the backup date, carries noindex and
+a UTM-tagged free-match CTA. The preview robots file disallows crawling. Its
+preview sitemap describes this subset, not an independent production baseline.
+The strict captured-snapshot compiler and its independent-baseline tests remain
+unchanged. Missing production pages or SEO fields have not been guessed.
+
+The build-only Action runs on relevant PRs, committed backup-state updates,
+successful off-host backup workflow completion and manual invocation. It uploads
+`dist/` as `alt-static-preview`; it never deploys it. This closes the earlier
+workflow gap where every PR skipped the build and the required manifest did
+not exist. Freshness is the backup cadence, not every ingest run. Publishing
+all curated data independently and the parity requirements above remain open.

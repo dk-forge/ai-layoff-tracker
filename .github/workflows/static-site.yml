@@ -4,48 +4,47 @@ on:
   pull_request:
     paths:
       - 'railway/static_site.py'
+      - 'railway/static_preview.py'
       - 'railway/static_site_assets/**'
-      - 'railway/tests/test_static_site.py'
+      - 'railway/tests/test_static*.py'
+      - 'railway/backup_state.json'
       - 'static-site/data/**'
       - '.github/workflows/static-site.yml'
   push:
     branches: [main]
     paths:
+      - 'railway/backup_state.json'
       - 'static-site/data/**'
+  workflow_run:
+    workflows: ['Weekly off-host backup']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  contract:
+  preview:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Test the offline build contract
         working-directory: railway
-        run: python -m unittest tests.test_static_site -v
-
-  build:
-    if: github.event_name != 'pull_request'
-    needs: contract
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - name: Build the actual public snapshot
-        run: python railway/static_site.py --snapshot static-site/data/manifest.json --out dist
+        run: python -m unittest tests.test_static_site tests.test_static_preview -v
+      - name: Build a non-indexable public-backup preview
+        run: python railway/static_preview.py --state railway/backup_state.json --out dist
       - name: Keep build output for review
         uses: actions/upload-artifact@v4
         with:
-          name: alt-static-site
+          name: alt-static-preview
           path: dist/
           if-no-files-found: error
           retention-days: 7

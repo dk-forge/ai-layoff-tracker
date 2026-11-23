@@ -4,7 +4,7 @@ date: 2026-11-22
 type: feat
 area: static-site
 files: railway/static_site.py, railway/static_site_assets, .github/workflows/static-site.yml, docs/STATIC_MIGRATION.md, docs/STATIC_SNAPSHOT.md
-tests: Ten offline builder tests, workflow and test-group contracts, synthetic browser checks at 390px and 1280px
+tests: Offline builder and preview tests, workflow and test-group contracts, browser checks at 390px and 1280px
 rollback: Revert this build-only change; the deployed WordPress site is unchanged
 env: none
 ---
@@ -14,3 +14,9 @@ compiler. Missing sitemap pages, metadata, assets or unmigrated active content
 block output. Production parity is not established: the real public-page/SEO
 snapshot, independent publisher and remaining interactive features are missing.
 The Actions job builds review artifacts only. There is no deployment or DNS change.
+
+A build-only preview now reads checksum-pinned public GitHub backups and emits
+reviewed source rows under recorded company slugs. Every preview page is
+non-indexable and has a tracked match CTA. PR and backup-completion builds
+upload dist as a review artifact. This is a preview subset, not production
+sitemap or SEO parity, and does not replace the WordPress data publisher.
