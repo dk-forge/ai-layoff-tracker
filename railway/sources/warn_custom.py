@@ -13,6 +13,11 @@ PDFs to 2015), NV (master PDFs), MN (report PDFs), MA (CSV + FY xlsx), and
 NY history (the retired dol.ny.gov database, frozen 4/1/2025 — supplements
 warn-scraper's live-dashboard NY coverage; identical hashes dedup the overlap).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import hashlib
 import html as _html
 import io
@@ -106,7 +111,7 @@ def _tx_get(url, *, want_zip=False, attempts=3):
     """GET a TWC url, retrying the empty-202 challenge. None when never served."""
     for i in range(attempts):
         try:
-            r = requests.get(url, headers=_TX_UA, timeout=60)
+            r = blog_reads.get(url, getter=requests.get, headers=_TX_UA, timeout=60)
             body = r.content or b""
             if r.status_code == 200 and body and (not want_zip or body[:2] == b"PK"):
                 return r
@@ -188,7 +193,7 @@ def _tx_archive_copy(url):
     """(content, capture timestamp) of the newest EXISTING Archive capture of a
     TWC workbook URL, or (None, None). Read-only: never requests a new capture."""
     try:
-        r = requests.get(_WAYBACK_AVAILABLE, params={"url": url}, headers=UA, timeout=60)
+        r = blog_reads.get(_WAYBACK_AVAILABLE, getter=requests.get, params={"url": url}, headers=UA, timeout=60)
         snap = ((r.json() or {}).get("archived_snapshots") or {}).get("closest") or {}
         ts = str(snap.get("timestamp") or "")
         if not snap.get("available") or str(snap.get("status")) != "200" or not ts.isdigit():
@@ -196,7 +201,7 @@ def _tx_archive_copy(url):
         raw = _WAYBACK_RAW.format(ts=ts, url=url)
         for i in range(3):
             try:
-                resp = requests.get(raw, headers=UA, timeout=120)
+                resp = blog_reads.get(raw, getter=requests.get, headers=UA, timeout=120)
                 body = resp.content or b""
                 if resp.status_code == 200 and body[:2] == b"PK":
                     return body, ts
@@ -269,7 +274,7 @@ def fetch_tx():
     try:
         url = ("https://data.texas.gov/resource/8w53-c4f6.json"
                "?$limit=5000&$order=notice_date%20DESC")
-        rows = requests.get(url, headers=UA, timeout=TIMEOUT).json()
+        rows = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT).json()
         _add(_tx_rows_to_entries(rows, "https://data.texas.gov/d/8w53-c4f6"))
     except Exception as exc:
         print(f"    TX socrata: {exc}")
@@ -333,7 +338,7 @@ def fetch_fl():
 def fetch_ga():
     """TCSG GravityView DataTables endpoint (nonce scraped from the page)."""
     landing = "https://www.tcsg.edu/warn-public-view/"
-    page = requests.get(landing, headers=UA, timeout=TIMEOUT).text
+    page = blog_reads.get(landing, getter=requests.get, headers=UA, timeout=TIMEOUT).text
     m = re.search(r'"action":"gv_datatables_data"[^}]*?"nonce":"([0-9a-f]{10})"', page)
     if not m:
         m = re.search(r'"nonce":"([0-9a-f]{10})"[^}]*?"action":"gv_datatables_data"', page)
@@ -411,7 +416,7 @@ def fetch_oh():
     for page_url in pages:
         slug = page_url.rsplit("/", 1)[-1]
         try:
-            page = requests.get(page_url, headers=UA, timeout=TIMEOUT)
+            page = blog_reads.get(page_url, getter=requests.get, headers=UA, timeout=TIMEOUT)
             if page.status_code != 200:
                 print(f"    OH: {slug} -> HTTP {page.status_code}")
                 continue
@@ -447,7 +452,7 @@ def fetch_oh():
             continue
         seen.add(key)
         try:
-            resp = requests.get(u, headers=UA, timeout=TIMEOUT)
+            resp = blog_reads.get(u, getter=requests.get, headers=UA, timeout=TIMEOUT)
             if resp.status_code != 200:
                 continue
             out += _oh_entries_from_csv(resp.text)
@@ -465,7 +470,7 @@ def fetch_mi():
            "&itemid={BE81F7C2-36A8-4FDE-853C-B05B6E090055}"
            "&v={1FFFCC21-5151-4A2B-ABFC-F7FE4E5C9783}&p=500"
            "&o=Created%20Date%20sort,Descending")
-    data = requests.get(url, headers=UA, timeout=TIMEOUT).json()
+    data = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT).json()
     out = []
     for res in data.get("Results", []):
         html = (res.get("Html") or "").replace("&nbsp;", " ")
@@ -529,7 +534,7 @@ def fetch_co(get=None):
     scraper that is fine (it returns the full year from any un-blocked IP).
     """
     from openpyxl import load_workbook
-    do_get = get or (lambda u, **kw: requests.get(u, **kw))
+    do_get = get or (lambda u, **kw: blog_reads.get(u, getter=requests.get, **kw))
     landing = "https://cdle.colorado.gov/employers/layoff-separations/layoff-warn-list"
     ids = []
     try:
@@ -620,7 +625,7 @@ def _pdf_text(content):
 def fetch_id():
     """Idaho: one cumulative text-layer PDF; link rotates, scraped from landing."""
     landing = "https://www.labor.idaho.gov/businesses/layoff-assistance/"
-    page = requests.get(landing, headers=UA, timeout=TIMEOUT).text
+    page = blog_reads.get(landing, getter=requests.get, headers=UA, timeout=TIMEOUT).text
     # The filename rotates. It carried a version suffix until mid-2026
     # (Idaho-WARN-Notices-3.2.pdf) and is now plain Idaho-WARN-Notices.pdf, in
     # an uploads folder dated the month they last republished. Match the stem,
@@ -632,7 +637,7 @@ def fetch_id():
                       r'[Ww][Aa][Rr][Nn][^"]*\.pdf)"', page)
     if not m:
         raise RuntimeError("ID: WARN pdf link not found on landing page")
-    pdf = requests.get(m.group(1), headers=UA, timeout=60)
+    pdf = blog_reads.get(m.group(1), getter=requests.get, headers=UA, timeout=60)
     out = []
     for table in _pdf_tables(pdf.content):
         for row in table:
@@ -699,7 +704,7 @@ def fetch_la(get=None):
     `get` is injectable so the tests can drive both branches without a network.
     """
     from datetime import date as _date
-    do_get = get or (lambda u, **kw: requests.get(u, **kw))
+    do_get = get or (lambda u, **kw: blog_reads.get(u, getter=requests.get, **kw))
     out = []
     unreachable_years = []
     for y in range(2015, _date.today().year + 1):
@@ -764,7 +769,7 @@ def _nc_year_csv(y, get=None):
     `get` is injectable so the tests drive every request without a network and
     without depending on which `requests` object this module bound at import."""
     import csv as _csv
-    do_get = get or (lambda u, **kw: requests.get(u, **kw))
+    do_get = get or (lambda u, **kw: blog_reads.get(u, getter=requests.get, **kw))
     page = do_get(f"{_NC_WARN_BASE}/report-workforce-warn-summary-list-{y}",
                   headers=UA, timeout=TIMEOUT)
     if page.status_code != 200:
@@ -937,7 +942,7 @@ def fetch_nc(get=None):
     by discovery order or by whichever `requests` object this module bound at
     import time, which is what left the archive PDFs reachable in one CI run."""
     from datetime import date as _date
-    do_get = get or (lambda u, **kw: requests.get(u, **kw))
+    do_get = get or (lambda u, **kw: blog_reads.get(u, getter=requests.get, **kw))
     out = []
     for y in (_date.today().year, _date.today().year - 1):  # Jan rollover safety
         try:
@@ -1099,7 +1104,7 @@ def fetch_nv():
     out = []
     for url in _NV_MASTER_PDFS:
         try:
-            resp = requests.get(url, headers=_NV_HEADERS, timeout=TIMEOUT)
+            resp = blog_reads.get(url, getter=requests.get, headers=_NV_HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
             continue
         if resp.status_code != 200 or not resp.content.startswith(b"%PDF"):
@@ -1220,8 +1225,8 @@ def fetch_mn():
     urls = set(_MN_SEED_PDFS)
     for attempt in range(2):  # Wayback CDX is slow and flaky — retry once
         try:
-            cdx = requests.get(
-                "https://web.archive.org/cdx/search/cdx",
+            cdx = blog_reads.get(
+                "https://web.archive.org/cdx/search/cdx", getter=requests.get,
                 params={"url": "mn.gov/deed/assets/plant-closing*",
                         "collapse": "urlkey", "fl": "original", "limit": "500"},
                 headers=UA, timeout=90)
@@ -1235,7 +1240,7 @@ def fetch_mn():
     out = []
     for url in sorted(urls):
         try:
-            resp = requests.get(url, headers=UA, timeout=TIMEOUT)
+            resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT)
         except Exception:
             continue
         if resp.status_code != 200 or b"%PDF" not in resp.content[:1024]:
@@ -1424,7 +1429,7 @@ def fetch_ny_history():
     out = []
     for label, listing_url in listings:
         try:
-            page = requests.get(listing_url, headers=UA, timeout=TIMEOUT)
+            page = blog_reads.get(listing_url, getter=requests.get, headers=UA, timeout=TIMEOUT)
             if page.status_code != 200:
                 raise RuntimeError(f"HTTP {page.status_code}")
             rows = _ny_listing_rows(page.text)
@@ -1434,7 +1439,7 @@ def fetch_ny_history():
         kept = failed = 0
         for company, detail_url, notice_text in rows:
             try:
-                resp = requests.get(detail_url, headers=UA, timeout=60)
+                resp = blog_reads.get(detail_url, getter=requests.get, headers=UA, timeout=60)
                 if resp.status_code != 200:
                     raise RuntimeError(f"HTTP {resp.status_code}")
                 text = (_pdf_text(resp.content) if resp.content[:4] == b"%PDF"
@@ -1466,7 +1471,7 @@ def fetch_ky():
     origin = "https://kyworks.ky.gov"
     hrefs = []
     try:
-        page = requests.get(landing, headers=UA, timeout=TIMEOUT).text
+        page = blog_reads.get(landing, getter=requests.get, headers=UA, timeout=TIMEOUT).text
         hrefs = re.findall(r'href="(/Services/Documents/[^"]+\.xlsx)"', page, re.I)
     except Exception as e:
         print(f"KY landing fetch failed: {e}")
@@ -1490,7 +1495,7 @@ def fetch_ky():
     for href in dict.fromkeys(hrefs):
         url = href if href.lower().startswith("http") else origin + href
         try:
-            xls = requests.get(url, headers=UA, timeout=60)
+            xls = blog_reads.get(url, getter=requests.get, headers=UA, timeout=60)
             wb = load_workbook(io.BytesIO(xls.content), read_only=True, data_only=True)
         except Exception as e:
             print(f"KY workbook fetch failed ({url[:60]}): {e}")
@@ -1586,7 +1591,7 @@ def _ri_entries_from_workbook(content, detail_url):
 
 def fetch_ri(get=None):
     """Rhode Island DLT WARN workbook, read by link target rather than link text."""
-    get = get or (lambda u: requests.get(u, headers=UA, timeout=TIMEOUT))
+    get = get or (lambda u: blog_reads.get(u, getter=requests.get, headers=UA, timeout=TIMEOUT))
     page = get(_RI_PAGE)
     if getattr(page, "status_code", 200) != 200:
         raise RuntimeError(f"RI: WARN page not served (HTTP {page.status_code}); "

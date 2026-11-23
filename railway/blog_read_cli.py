@@ -6,7 +6,8 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request
 
-from blog_read_cache import ReadLimited, eligible, urlopen
+from blog_read_cache import ReadLimited, urlopen
+from authenticated_blog_reads import blog_host, RequestBudgetExceeded
 
 UA = 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)'
 
@@ -20,7 +21,7 @@ def main(argv=None):
     parser.add_argument('--allow-http-error', action='store_true')
     args = parser.parse_args(argv)
     headers = {'User-Agent': UA}
-    if not args.url.startswith('https://') or not eligible(args.url, headers):
+    if not args.url.startswith('https://') or not blog_host(args.url):
         parser.error('only HTTPS reads of the blog host are supported')
     if args.key_env:
         value = os.environ.get(args.key_env)
@@ -38,6 +39,9 @@ def main(argv=None):
             if args.status_code:
                 print(response.status)
             return 0 if args.allow_http_error or 200 <= response.status < 300 else 1
+    except RequestBudgetExceeded:
+        print('DEFERRED: authenticated per-run request budget exhausted', file=sys.stderr)
+        return 75
     except ReadLimited:
         print('DEFERRED: this URL already spent its hourly read budget', file=sys.stderr)
         return 75

@@ -6,6 +6,11 @@ each article and extract the layoff details downstream via the same extractor.
 This is the historical + global press layer: free, worldwide, back to 2024,
 and it's where AI-attributed layoff language actually appears.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import hashlib
 import html
 import json
@@ -1258,7 +1263,7 @@ def _fetch_article(url, gate=None):
     if state != robots_gate.ALLOW:
         raise RobotsRefused(state, note)
     gate.pace(url)
-    resp = requests.get(url, headers={"User-Agent": robots_gate.PUBLISHER_UA}, timeout=25)
+    resp = blog_reads.get(url, getter=requests.get, headers={"User-Agent": robots_gate.PUBLISHER_UA}, timeout=25)
     resp.raise_for_status()
     return window_article_markup(resp.text)
 
@@ -1461,13 +1466,13 @@ def _query_window(query, start, end, max_records, reach_label="broad", deadline=
         time.sleep(delay)
         try:
             if deadline is None:
-                resp = requests.get(GDELT_URL, params=params,
+                resp = blog_reads.get(GDELT_URL, getter=requests.get, params=params,
                                     headers={"User-Agent": BROWSER_UA},
                                     timeout=QUERY_TIMEOUT_SECONDS)
             else:
                 request_timeout = max(0.1, min(
                     QUERY_TIMEOUT_SECONDS, deadline - time.monotonic()))
-                resp = requests.get(GDELT_URL, params=params,
+                resp = blog_reads.get(GDELT_URL, getter=requests.get, params=params,
                                     headers={"User-Agent": BROWSER_UA},
                                     timeout=request_timeout)
             if resp.status_code == 429:

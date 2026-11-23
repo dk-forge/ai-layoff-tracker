@@ -14,6 +14,11 @@ Token: env TODO_ISSUES_TOKEN (falls back to GH_TOKEN).
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import json
 import os
@@ -31,7 +36,7 @@ def _call(method, path, token, body=None):
                                  headers={"Authorization": f"Bearer {token}",
                                           "Accept": "application/vnd.github+json",
                                           "User-Agent": "dk-forge-finish-line"})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with blog_reads.urlopen(req, timeout=30) as r:
         return json.loads(r.read() or b"null")
 
 

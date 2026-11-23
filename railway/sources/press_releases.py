@@ -7,6 +7,11 @@ JSON array of objects such as:
 Only feeds controlled by the company or an exchange should be added.  The
 collector is intentionally dormant until a reviewed feed registry is supplied.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html
 import json
 import os
@@ -215,7 +220,7 @@ def pull_press_releases(days_back=3):
     pull_press_releases.last_failures = []
     for feed in feeds:
         try:
-            response = requests.get(feed["url"], headers=UA, timeout=30)
+            response = blog_reads.get(feed["url"], getter=requests.get, headers=UA, timeout=30)
             response.raise_for_status()
             # PARSING IS PART OF READING A FEED, so it belongs inside this
             # feed's isolation. It used to sit below the `except`, and a feed

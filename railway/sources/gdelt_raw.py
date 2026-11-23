@@ -7,6 +7,11 @@ required interval cannot be read; missing data never becomes an empty success.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import html
 import io
 import os
@@ -60,8 +65,8 @@ def _download(url, deadline=None):
     if remaining is not None and remaining <= 0:
         raise TimeoutError("raw GKG collection deadline reached")
     timeout = FILE_TIMEOUT_SECONDS if remaining is None else max(1, min(FILE_TIMEOUT_SECONDS, remaining))
-    response = requests.get(
-        url, headers={"User-Agent": USER_AGENT}, timeout=(10, timeout), stream=True)
+    response = blog_reads.get(
+        url, getter=requests.get, headers={"User-Agent": USER_AGENT}, timeout=(10, timeout), stream=True)
     if response.status_code == 404:
         return None
     response.raise_for_status()

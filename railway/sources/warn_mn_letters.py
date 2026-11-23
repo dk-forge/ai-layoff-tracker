@@ -44,6 +44,11 @@ the standard gate -> extract_layoff_data -> post_to_wordpress path. No row is
 written directly; the extractor's verbatim-count and is-a-layoff guards reject
 anything that is not a real WARN layoff, so an over-broad discovery is safe.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import io
 import os
 import re
@@ -153,7 +158,7 @@ def _cdx_letter_urls():
     for pat in patterns:
         for attempt in range(2):  # CDX is slow and flaky — retry once
             try:
-                r = requests.get(CDX, params={
+                r = blog_reads.get(CDX, getter=requests.get, params={
                     "url": pat, "collapse": "urlkey",
                     "fl": "original", "limit": "1000",
                 }, headers=UA, timeout=90)
@@ -181,7 +186,7 @@ def _pdf_text(url):
     """Download one asset PDF and return its text, or '' on any failure."""
     import pdfplumber
     try:
-        r = requests.get(url, headers=UA, timeout=TIMEOUT)
+        r = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT)
     except Exception:
         return ""
     if r.status_code != 200 or b"%PDF" not in r.content[:1024]:

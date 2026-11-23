@@ -42,6 +42,11 @@ Dependencies: `requests` + stdlib only (csv, datetime, io). No API key, no
 secrets. Fail-soft: network / parse errors are captured into an "errors" list
 and the function returns whatever it managed to fetch; it never raises.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import csv
 import io
 from datetime import datetime, timezone
@@ -92,8 +97,8 @@ def _fetch_series_csv(series_id, timeout=REQUEST_TIMEOUT):
     (a single state). Never raises.
     """
     try:
-        resp = requests.get(
-            FRED_CSV_URL,
+        resp = blog_reads.get(
+            FRED_CSV_URL, getter=requests.get,
             params={"id": series_id},
             headers=HEADERS,
             timeout=timeout,

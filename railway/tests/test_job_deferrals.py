@@ -158,7 +158,8 @@ class _JobCase(unittest.TestCase):
                 mock.patch.object(urllib.request, "urlopen", urlopen), \
                 mock.patch.object(http_retry, "requests", requests), \
                 mock.patch("time.sleep", lambda _s: None), \
-                mock.patch.object(http_retry.time, "sleep", lambda _s: None):
+                mock.patch.object(http_retry.time, "sleep", lambda _s: None), \
+                mock.patch.object(http_retry, "_sleep", lambda _s: None):
             buf = io.StringIO()
             with mock.patch.object(sys, "stdout", buf):
                 try:

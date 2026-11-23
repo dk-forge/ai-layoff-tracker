@@ -54,7 +54,7 @@ class Budget(unittest.TestCase):
             cache.ReadCache(self.root, clock=self.clock).get(URL, fail)
         self.assertEqual(self.calls, 1)
 
-    def test_only_public_responses_are_cacheable_but_all_bot_reads_are_limited(self):
+    def test_only_public_responses_are_cacheable(self):
         self.assertTrue(cache.eligible(URL, UA))
         for url, headers in [(URL, {**UA, 'Authorization': 'not-a-real-credential'}),
                              (URL, {**UA, 'Cookie': 'session=synthetic'}),
@@ -85,7 +85,7 @@ class Budget(unittest.TestCase):
         self.assertEqual(cache.urlopen(target, headers=UA, reader=self.reader, open_one=open_one).read(), b'<h1>Recorded page</h1>')
         self.assertEqual(calls, [URL, target])
 
-    def test_authenticated_api_reads_share_the_cap_without_replaying_a_batch(self):
+    def test_authenticated_api_reads_are_fresh_and_never_replay_a_batch(self):
         import requests
         api = 'https://asktherecruiter.com/blog/wp-json/layoffs/v1/query'
         headers = {**UA, 'X-Layoff-API-Key': 'synthetic-key'}
@@ -94,13 +94,13 @@ class Budget(unittest.TestCase):
             calls.append(url)
             response = requests.Response()
             response.status_code = 200
-            response._content = b'{"rows":["synthetic-batch"]}'
+            response._content = ('synthetic-batch-' + str(len(calls))).encode()
             return response
         response = cache.get(api, headers=headers, params={'_fresh': 'one'}, getter=fetch, reader=self.reader)
-        self.assertIn('synthetic-batch', response.text)
-        with self.assertRaises(requests.RequestException):
-            cache.get(api, headers=headers, params={'_fresh': 'two'}, getter=fetch, reader=self.reader)
-        self.assertEqual(len(calls), 1)
+        self.assertIn('synthetic-batch-1', response.text)
+        second = cache.get(api, headers=headers, params={'_fresh': 'two'}, getter=fetch, reader=self.reader)
+        self.assertIn('synthetic-batch-2', second.text)
+        self.assertEqual(len(calls), 2)
         stored = ''.join(p.read_text() for p in self.root.glob('*.json'))
         self.assertNotIn('synthetic-key', stored)
         self.assertNotIn('synthetic-batch', stored)
@@ -141,20 +141,22 @@ class Budget(unittest.TestCase):
             http_retry.get_with_retry(URL, headers=UA, get=get, sleep=lambda _: None)
         self.assertEqual(calls, [URL])
 
-    def test_authenticated_ops_panel_reports_a_limited_read_as_unknown(self):
+    def test_authenticated_ops_panel_gets_a_fresh_read_each_time(self):
         import json
         import ops_status
         from unittest.mock import patch
+        from urllib.response import addinfourl
+        def transport(request, **options):
+            return addinfourl(io.BytesIO(json.dumps({'available': False}).encode()), {}, request.full_url, 200)
         with patch.object(cache, 'ReadCache', return_value=self.reader), \
-             patch.object(cache, '_open_one', return_value=(200, {'Content-Type': 'application/json'},
-                                                          json.dumps({'available': False}).encode())) as send, \
+             patch('urllib.request.urlopen', side_effect=transport) as send, \
              patch.dict('os.environ', {'WP_API_KEY': 'synthetic-key'}):
             first = ' '.join(ops_status.subscriber_lines())
             second = ' '.join(ops_status.subscriber_lines())
         self.assertIn('cannot see', first)
-        self.assertIn('UNKNOWN', second)
-        self.assertIn('already attempted', second)
-        self.assertEqual(send.call_count, 1)
+        self.assertIn('cannot see', second)
+        self.assertNotIn('already attempted', second)
+        self.assertEqual(send.call_count, 2)
 
     def test_a_head_read_spends_the_budget_without_becoming_a_get_body(self):
         from urllib.request import Request
@@ -166,6 +168,18 @@ class Budget(unittest.TestCase):
         with self.assertRaises(cache.ReadLimited):
             cache.urlopen(URL, headers=UA, reader=self.reader, open_one=open_one)
         self.assertEqual(calls, ['HEAD'])
+
+    def test_browser_user_agent_does_not_bypass_the_read_cap(self):
+        from urllib.request import Request
+        calls = []
+        request = Request(URL, headers={'User-Agent': 'Mozilla/5.0'})
+        def transport(req, timeout):
+            calls.append(req.full_url)
+            return cache.addinfourl(io.BytesIO(b'fresh browser observation'), {}, req.full_url, 200)
+        self.assertEqual(cache.urlopen(request, reader=self.reader, stream_opener=transport).read(), b'fresh browser observation')
+        with self.assertRaises(cache.ReadLimited):
+            cache.urlopen(request, reader=self.reader, stream_opener=transport)
+        self.assertEqual(calls, [URL])
 
 
 if __name__ == '__main__':

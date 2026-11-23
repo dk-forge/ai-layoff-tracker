@@ -48,6 +48,11 @@ CRITICAL: conservative parsing throughout. If a row does not cleanly yield
 company + count + date, it is SKIPPED (fewer rows) rather than guessed. A wrong
 number is far worse than a missing one.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html as _html_mod
 import re
 import time
@@ -142,7 +147,7 @@ def fetch_ms():
     real Layoff/Closure token AND the count parses AND a date parses — which
     also filters out the wrapped header rows and any continuation lines."""
     try:
-        page = requests.get(_MS_LANDING, headers=UA, timeout=TIMEOUT)
+        page = blog_reads.get(_MS_LANDING, getter=requests.get, headers=UA, timeout=TIMEOUT)
         page.raise_for_status()
         pdf_urls = _ms_pdf_links(page.text)
     except Exception as exc:
@@ -151,7 +156,7 @@ def fetch_ms():
     out = []
     for url in pdf_urls:
         try:
-            resp = requests.get(url, headers=UA, timeout=60)
+            resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=60)
             if resp.status_code != 200 or resp.content[:4] != b"%PDF":
                 continue
             tables = _pdf_tables(resp.content)
@@ -364,7 +369,7 @@ def _wv_per_notice(page_html, cutoff, out, seen):
                 print(f"    WV {fname}: no employer name in the link label; skipped")
                 continue
             try:
-                resp = requests.get(url, headers=UA, timeout=90)
+                resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=90)
                 if resp.status_code != 200 or resp.content[:4] != b"%PDF":
                     continue
                 text = _pdf_text(resp.content)
@@ -448,7 +453,7 @@ def fetch_wv():
     urls = list(_WV_KNOWN_SUMMARIES)
     page_html = ""
     try:
-        page = requests.get(_WV_LANDING, headers=UA, timeout=TIMEOUT)
+        page = blog_reads.get(_WV_LANDING, getter=requests.get, headers=UA, timeout=TIMEOUT)
         page_html = page.text
         for href in _WV_SUMMARY_RE.findall(page_html):
             url = href if href.lower().startswith("http") else _WV_ORIGIN + href
@@ -460,7 +465,7 @@ def fetch_wv():
     out, seen = [], set()
     for url in urls:
         try:
-            resp = requests.get(url, headers=UA, timeout=90)
+            resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=90)
             if resp.status_code != 200 or resp.content[:4] != b"%PDF":
                 continue
             tables = _pdf_tables(resp.content)
@@ -529,7 +534,7 @@ def fetch_hi():
     for year in years:
         url = _HI_YEAR_URL.format(year=year)
         try:
-            resp = requests.get(url, headers=UA, timeout=TIMEOUT)
+            resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=TIMEOUT)
             if resp.status_code != 200:
                 continue
             html_text = re.sub(r"<script.*?</script\b[^>]*>", "", resp.text, flags=re.S | re.I)
@@ -589,7 +594,7 @@ def fetch_nm():
     for year in years:
         url = _NM_PDF_URL.format(year=year)
         try:
-            resp = requests.get(url, headers=UA, timeout=60)
+            resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=60)
             if resp.status_code != 200 or resp.content[:4] != b"%PDF":
                 continue
             tables = _pdf_tables(resp.content)
@@ -797,7 +802,7 @@ def fetch_ks():
     rows, seen, out = [], set(), []
     for page in range(1, _KS_MAX_PAGES + 1):
         try:
-            resp = requests.get(_KS_LIST.format(since=since, page=page),
+            resp = blog_reads.get(_KS_LIST.format(since=since, page=page), getter=requests.get,
                                 headers=UA, timeout=45)
             if resp.status_code != 200:
                 break
@@ -818,7 +823,7 @@ def fetch_ks():
               f"{_KS_MAX_DETAILS}")
     for nid in ids[:_KS_MAX_DETAILS]:
         try:
-            resp = requests.get(f"{_KS_BASE}/search/warn_lookups/{nid}",
+            resp = blog_reads.get(f"{_KS_BASE}/search/warn_lookups/{nid}", getter=requests.get,
                                 headers=UA, timeout=45)
             if resp.status_code != 200:
                 continue
@@ -914,7 +919,7 @@ def fetch_al():
     """
     out = []
     try:
-        resp = requests.get(_AL_CSV, headers=UA, timeout=TIMEOUT)
+        resp = blog_reads.get(_AL_CSV, getter=requests.get, headers=UA, timeout=TIMEOUT)
         if resp.status_code != 200:
             print(f"    AL csv: HTTP {resp.status_code}")
             return out

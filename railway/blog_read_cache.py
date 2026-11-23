@@ -1,4 +1,4 @@
-"""A shared hourly budget for AiLayoffTracker blog reads, including keyed APIs."""
+"""An hourly cap for public blog pages; authenticated reads have a separate run budget."""
 from __future__ import annotations
 
 import base64
@@ -17,6 +17,11 @@ from urllib.error import HTTPError
 from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.response import addinfourl
+
+try:
+    import authenticated_blog_reads as auth_reads
+except ModuleNotFoundError:
+    from railway import authenticated_blog_reads as auth_reads
 
 TTL = 3600
 MAX_BODY = 8 * 1024 * 1024
@@ -49,16 +54,15 @@ def cacheable(url, headers, method='GET'):
 
 
 def eligible(url, headers, method='GET'):
-    """Every bot GET to the blog host spends the same hourly URL budget."""
-    try:
-        parsed = urlsplit(url)
-        sent = {k.lower(): str(v) for k, v in headers.items()}
-        return (method in ('GET', 'HEAD') and parsed.scheme in ('http', 'https')
-                and parsed.netloc == 'asktherecruiter.com'
-                and (parsed.path == '/blog' or parsed.path.startswith('/blog/'))
-                and 'ailayofftracker/1.0' in sent.get('user-agent', '').lower())
-    except ValueError:
+    """Only anonymous public page reads spend the hourly URL budget."""
+    if method not in ('GET', 'HEAD') or not auth_reads.blog_host(url):
         return False
+    if auth_reads.authenticated(url, headers):
+        return False
+    parsed = urlsplit(url)
+    path = unquote(parsed.path)
+    return not any(part in path for part in ('/wp-json', '/wp-admin', '/wp-login', '/wp-cron', '/xmlrpc')) and not any(
+        key.lower() == 'rest_route' for key, _ in parse_qsl(parsed.query))
 
 
 def _fresh_url(url, headers):
@@ -112,13 +116,16 @@ class ReadCache:
                 raise ReadLimited() from None
             now = self.clock()
             if existing and now - existing['requested_at'] < TTL:
-                if existing['kind'] != 'response' or existing.get('variant', '') != variant:
+                if not retain or existing['kind'] != 'response' or existing.get('variant', '') != variant:
+                    auth_reads.RUN.count('public_blog', 'cap_refusals')
                     raise ReadLimited(TTL - (now - existing['requested_at']))
+                auth_reads.RUN.count('public_blog', 'cache_hits')
                 return {'requested_at': existing['requested_at'], 'status': existing['status'], 'headers': existing['headers'],
                         'body': base64.b64decode(existing['body'])}
             record = {'requested_at': now, 'kind': 'pending', 'variant': variant}
             self.write(path, record)
             try:
+                auth_reads.RUN.count('public_blog', 'requests')
                 status, headers, body = fetch()
             except BaseException:
                 self.write(path, {**record, 'kind': 'error'})
@@ -157,10 +164,10 @@ def _open_one(request, timeout=30, **kwargs):
 
 def _variant(headers):
     values = {k.lower(): v for k, v in headers.items()}
-    return hashlib.sha256(json.dumps({k: values.get(k, '') for k in ('accept', 'accept-language', 'authorization', 'cookie', 'x-layoff-api-key', 'x-wp-nonce')}, sort_keys=True).encode()).hexdigest()
+    return hashlib.sha256(json.dumps({k: values.get(k, '') for k in ('user-agent', 'accept', 'accept-language', 'authorization', 'cookie', 'x-layoff-api-key', 'x-wp-nonce')}, sort_keys=True).encode()).hexdigest()
 
 
-def urlopen(request, data=None, timeout=30, *, headers=None, reader=None, open_one=None, stream_opener=None, **kwargs):
+def urlopen(request, data=None, timeout=30, *, headers=None, reader=None, open_one=None, stream_opener=None, _auth_attempts=3, **kwargs):
     from urllib.request import urlopen as direct
     if isinstance(request, str):
         request = Request(request, data=data, headers=headers or {})
@@ -169,6 +176,10 @@ def urlopen(request, data=None, timeout=30, *, headers=None, reader=None, open_o
         request = copy.copy(request)
         request.data = data
     sent = dict(request.header_items())
+    if request.get_method() in ('GET', 'HEAD') and auth_reads.authenticated(request.full_url, sent):
+        transport = stream_opener or direct
+        request.full_url = _fresh_url(request.full_url, sent)
+        return auth_reads.read(lambda: transport(request, timeout=timeout, **kwargs), attempts=_auth_attempts)
     if not eligible(request.full_url, sent, request.get_method()):
         return (stream_opener or direct)(request, timeout=timeout, **kwargs)
     fresh_url = _fresh_url(request.full_url, sent)
@@ -209,18 +220,23 @@ def urlopen(request, data=None, timeout=30, *, headers=None, reader=None, open_o
     raise OSError('public blog redirect loop or excessive chain')
 
 
-def get(url, params=_PARAMS_UNSET, *, getter=None, reader=None, _method='GET', **kwargs):
+def get(url, params=_PARAMS_UNSET, *, getter=None, reader=None, _method='GET', _auth_attempts=3, **kwargs):
     if params is not _PARAMS_UNSET:
         kwargs["params"] = params
-    headers = kwargs.get('headers') or {}
-    if not eligible(url, headers, _method):
-        if getter is None:
-            import requests
-            getter = requests.get
-        return getter(url, **kwargs)
     import requests
     getter = getter or requests.get
-    prepared = requests.Request('GET', url, params=kwargs.get('params')).prepare().url
+    session = getattr(getter, '__self__', None)
+    headers = {**(getattr(session, 'headers', None) or {}), **(kwargs.get('headers') or {})}
+    if not auth_reads.blog_host(url):
+        return getter(url, **kwargs)
+    params_value = kwargs.get('params')
+    query = urlencode(params_value, doseq=True) if isinstance(params_value, (dict, list, tuple)) else (params_value or '')
+    parsed = urlsplit(url)
+    combined_query = '&'.join(value for value in (parsed.query, query) if value)
+    prepared = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, combined_query, parsed.fragment))
+    if auth_reads.authenticated(prepared, headers, auth=kwargs.get('auth') or getattr(session, 'auth', None),
+                                cookies=kwargs.get('cookies') or getattr(session, 'cookies', None)):
+        return auth_reads.read(lambda: getter(_fresh_url(url, headers), **kwargs), attempts=_auth_attempts)
     if not eligible(prepared, headers, _method):
         return getter(url, **kwargs)
     prepared = _fresh_url(prepared, headers)

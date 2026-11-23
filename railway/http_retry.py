@@ -169,28 +169,35 @@ def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backo
     retried = set(TRANSIENT) | set(transient or ())
     exc_types = (requests.RequestException,) if requests is not None else (OSError,)
 
+    authenticated = blog_reads.auth_reads.authenticated(url, headers or {})
+    if authenticated:
+        retried.update(range(500, 600))
     for attempt in range(attempts):
         try:
             sent_headers = dict(headers or DEFAULT_UA)
             r = blog_reads.get(url, getter=get, params=params, headers=sent_headers,
-                    timeout=timeout)
+                    timeout=timeout, _auth_attempts=1)
             cookie = human_challenge_cookie(r.status_code, getattr(r, "text", ""))
             if cookie and not blog_reads.eligible(url, sent_headers):
                 # The challenge request did not reach WordPress. Replay the
                 # same GET once, just as the returned browser script does.
                 sent_headers["Cookie"] = cookie
                 r = blog_reads.get(url, getter=get, params=params, headers=sent_headers,
-                        timeout=timeout)
+                        timeout=timeout, _auth_attempts=1)
             if r.status_code not in retried:
                 return r
             if attempt < attempts - 1:
+                if authenticated:
+                    blog_reads.auth_reads.RUN.count('authenticated_api', 'retries')
                 asked = retry_after_seconds(r)
-                sleep(asked if asked is not None else backoff * (attempt + 1))
+                sleep(asked if asked is not None else backoff * (2 ** attempt if authenticated else attempt + 1))
                 continue
             return None
         except exc_types:
             if attempt < attempts - 1:
-                sleep(backoff * (attempt + 1))
+                if authenticated:
+                    blog_reads.auth_reads.RUN.count('authenticated_api', 'retries')
+                sleep(backoff * (2 ** attempt if authenticated else attempt + 1))
                 continue
             return None
     return None
@@ -251,7 +258,7 @@ def _send(method, url, data=None, headers=None, timeout=90):
     req = urllib.request.Request(url, data=data, headers=headers or {},
                                  method=method)
     try:
-        with blog_reads.urlopen(req, timeout=timeout) as resp:
+        with blog_reads.urlopen(req, timeout=timeout, _auth_attempts=1) as resp:
             return resp.getcode(), resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as exc:
         body = ""

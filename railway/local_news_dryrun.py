@@ -41,6 +41,11 @@ railway/local_news_ingest.py.
 """
 from __future__ import annotations
 
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import json
 import os
@@ -115,7 +120,7 @@ def _num(v):
 def _fetch(url):
     req = urllib.request.Request(url, headers=ln.UA)
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with blog_reads.urlopen(req, timeout=30) as r:
             return r.status, r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         return e.code, ""

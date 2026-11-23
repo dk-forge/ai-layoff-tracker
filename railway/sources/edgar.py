@@ -13,6 +13,11 @@ request to obtain its text, since full-text search returns no document body.
 SEC fair-access policy: max 10 requests/second, and a descriptive User-Agent
 is REQUIRED (requests without one are rejected). Set EDGAR_USER_AGENT.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html
 import os
 import re
@@ -82,7 +87,7 @@ def _get(url, params=None, attempts=3):
     resp = http_retry.get_with_retry(
         url, params=params, headers=_headers(), attempts=attempts, timeout=30,
         backoff=5, transient=EDGAR_TRANSIENT,
-        get=lambda *a, **k: requests.get(*a, **k))
+        get=lambda *a, **k: blog_reads.get(*a, getter=requests.get, **k))
     if resp is None:
         raise RuntimeError(f"EDGAR: transient answer on every one of {attempts} "
                            f"attempts for {url}")

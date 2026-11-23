@@ -34,6 +34,11 @@ and the health detail report how many rows carry a rotting link.
 No key. Optional env: GOOGLE_NEWS_MAX (items/run cap, default 150),
 GOOGLE_NEWS_GAP_SECONDS (polite gap between queries, default 1).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import html
 import os
 import re
@@ -377,7 +382,7 @@ def pull_google_news(queries=None, company_names=None, deadline_check=None):
             r = http_retry.get_with_retry(
                 _rss_url(q, loc[1], loc[2], loc[3]), headers=UA, attempts=3,
                 timeout=30, backoff=GAP if GAP > 0 else 5,
-                get=lambda *a, **k: requests.get(*a, **k))
+                get=lambda *a, **k: blog_reads.get(*a, getter=requests.get, **k))
             if r is None:
                 errors += 1
                 pull_google_news.last_error = "throttled or 5xx on every attempt"
@@ -525,7 +530,7 @@ def pull_google_news_day(day, max_items=None):
         r = http_retry.get_with_retry(
             _rss_url(q, loc[1], loc[2], loc[3]), headers=UA, attempts=3,
             timeout=30, backoff=GAP if GAP > 0 else 5,
-            get=lambda *a, **k: requests.get(*a, **k))
+            get=lambda *a, **k: blog_reads.get(*a, getter=requests.get, **k))
         time.sleep(GAP)
         if r is None or r.status_code != 200:
             continue

@@ -41,6 +41,11 @@ headcount) lands on one physical line; the reason/activity columns wrap. We
 parse per line and keep ONLY rows whose employer is clearly valid, dropping a
 wrapped row rather than posting a garbled company name (documented-floor rule).
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
 import datetime
 import hashlib
 import io
@@ -261,7 +266,7 @@ def _discover(months_back):
 
     # Route A: the landing page. Authoritative for the URL pattern itself.
     try:
-        r = requests.get(PUBLICATIONS_URL, headers=UA, timeout=TIMEOUT)
+        r = blog_reads.get(PUBLICATIONS_URL, getter=requests.get, headers=UA, timeout=TIMEOUT)
         if r.status_code != 200:
             notes["landing"] = f"HTTP {r.status_code}"
         else:
@@ -345,7 +350,7 @@ def pull_quebec(months_back=4):
     out, seen = [], set()
     for url in urls:
         try:
-            resp = requests.get(url, headers=UA, timeout=60)
+            resp = blog_reads.get(url, getter=requests.get, headers=UA, timeout=60)
             if resp.status_code == 404:
                 continue          # month not published yet, or older than the archive
             if resp.status_code != 200:

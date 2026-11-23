@@ -29,3 +29,14 @@ class Command(unittest.TestCase):
             with patch.object(cli, 'urlopen', side_effect=ReadLimited()):
                 self.assertEqual(75, cli.main(['https://asktherecruiter.com/blog/', '--output', str(out)]))
             self.assertFalse(out.exists())
+
+    def test_authenticated_budget_refusal_removes_stale_output(self):
+        from authenticated_blog_reads import RequestBudgetExceeded
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp, 'response.json')
+            out.write_bytes(b'old result')
+            with patch.object(cli, 'urlopen', side_effect=RequestBudgetExceeded()), \
+                 patch.dict('os.environ', {'SYNTHETIC_API_KEY': 'synthetic-private-key'}):
+                self.assertEqual(75, cli.main(['https://asktherecruiter.com/blog/wp-json/layoffs/v1/query',
+                                             '--output', str(out), '--key-env', 'SYNTHETIC_API_KEY']))
+            self.assertFalse(out.exists())
