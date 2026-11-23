@@ -7,7 +7,7 @@
 | 2026-11-23 | 18/25 | 19/25 (2026-11-15, different list) | no row on non-US announcements (Dutch government, Olympus, NatWest, Renault) |
 
 **Guard:** railway/tests/test_google_news_prefilter.py (3 kept headlines, 2 dropped lookalikes)
-**Class:** recurrence (vocabulary shape missed by a deterministic filter)
+**Class:** novel (a headline shape the deterministic prefilter missed)
 
 ## 2026-11-22 - 2.20.358 Talent daily email groups confirmed employer aliases
 
