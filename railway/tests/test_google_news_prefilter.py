@@ -38,6 +38,12 @@ LAYOFF_EN = (
     "Micron to lay off 10% of staff",
     "Bank eliminates 1,200 positions in branch overhaul",
     "Merger to eliminate 1,500 jobs at combined lender",
+    # 2026-11-23 benchmark: Renault's 2026-11-17 cut (about 1,000 white-collar
+    # roles through voluntary departures) was missed; these real Google News
+    # headlines named no verb + workforce-noun, so the prefilter dropped them.
+    "Renault to create 2,000 jobs in France while cutting 1,000 others by 2028",
+    "Renault plans 2,000 recruits and 1,000 voluntary departures: report",
+    "Carmaker opens voluntary redundancies for 900 office staff",
 )
 
 MERGER_EN = (
@@ -53,6 +59,8 @@ MERGER_EN = (
     "Kappa merger creates largest regional bank",
     "Lambda's acquisition of Mu wins EU approval",
     "Playoffs: Acme beats Beta in overtime",
+    "Acme raises 1,000 others in voluntary donation drive",
+    "Acme volunteers join voluntary clean-up crew",
 )
 
 LAYOFF_NATIVE = (
