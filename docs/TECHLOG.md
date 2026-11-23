@@ -15,7 +15,8 @@ merge or deployment is claimed.
 Full local suite is not green: managed Chrome blocks existing `data:` fixture
 URLs, and the offline-suite positive control records the enforced proxy. The
 browser failure also reproduces on unmodified main. No assertion was changed
-to hide either failure, and this preparation has not been pushed.
+to hide either failure. A review branch does not establish green CI or a live
+fix.
 
 **Guard:** `railway/tests/test_blog_related_titles.py`.
 **Class:** wrong-scope-or-key.
