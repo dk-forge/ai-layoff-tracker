@@ -11,3 +11,7 @@ th, td { padding: .75rem; border-bottom: 1px solid #ddd; }
 td a { display: inline-flex; align-items: center; min-height: 44px; }
 input { min-height: 44px; max-width: 100%; box-sizing: border-box; font: inherit; }
 :focus-visible { outline: 3px solid #9b6913; outline-offset: 3px; }
+.tracker-filters:not([hidden]) { display: flex; flex-wrap: wrap; gap: 1rem; align-items: start; }
+.tracker-filters label { display: grid; gap: .25rem; }
+.tracker-filters button, [data-more] { min-height: 44px; font: inherit; }
+[data-chart] meter { width: 12rem; max-width: 100%; }

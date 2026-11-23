@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
+from unittest.mock import patch
 
 import static_site
 
@@ -15,12 +16,23 @@ class Head(HTMLParser):
         super().__init__()
         self.tags = []
         self.text = []
+        self.titles = []
+        self.in_title = False
 
     def handle_starttag(self, tag, attrs):
         self.tags.append((tag, dict(attrs)))
+        if tag == "title":
+            self.in_title = True
+            self.titles.append("")
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self.in_title = False
 
     def handle_data(self, data):
         self.text.append(data)
+        if self.in_title:
+            self.titles[-1] += data
 
 
 class StaticSite(unittest.TestCase):
@@ -68,21 +80,93 @@ class StaticSite(unittest.TestCase):
         return static_site.build(path, self.output)
 
     def test_every_independent_sitemap_url_has_unchanged_head_and_tracked_cta(self):
-        self.build()
-        for index, url in enumerate(self.urls):
+        archive = "https://asktherecruiter.com/blog/ai-layoff-tracker/editions/daily/recorded/"
+        page = self.page(archive, 2)
+        page["robots"] = "noindex, follow"
+        self.manifest["pages"].append(page)
+        self.assertEqual(self.build(), 3)
+        baseline = static_site.sitemap_urls(
+            self.manifest["sitemaps"], {
+                item["url"]: self.files[item["source"]] for item in self.manifest["files"]
+            },
+        )
+        self.assertEqual(baseline, set(self.urls))
+        for index, url in enumerate([*self.urls, archive]):
             path = self.output / url.split("asktherecruiter.com/", 1)[1] / "index.html"
             parser = Head()
             parser.feed(path.read_text())
-            self.assertIn(f"Recorded title {index} & evidence", parser.text)
-            self.assertIn(("link", {"rel": "canonical", "href": url}), parser.tags)
+            self.assertEqual(parser.titles, [f"Recorded title {index} & evidence"])
+            canonicals = [attrs["href"] for tag, attrs in parser.tags
+                          if tag == "link" and attrs.get("rel") == "canonical"]
+            self.assertEqual(canonicals, [url])
             self.assertIn(("meta", {"name": "description", "content": f"Recorded description {index}"}), parser.tags)
             cta = [attrs for tag, attrs in parser.tags if tag == "a" and attrs.get("data-match-cta") == "true"]
             self.assertEqual(len(cta), 1)
-            self.assertIn("utm_source=ai-layoff-tracker", cta[0]["href"])
-            self.assertIn("start=1", cta[0]["href"])
+            self.assertEqual(
+                cta[0]["href"],
+                "https://asktherecruiter.com/?start=1&utm_source=ai-layoff-tracker"
+                "&utm_medium=referral&utm_campaign=static_tracker#start-intake",
+            )
             self.assertIn("Check my match, free", parser.text)
         self.assertEqual((self.output / "blog/sitemap.xml").read_bytes(), self.files["sitemap.xml"])
         self.assertEqual((self.output / "robots.txt").read_bytes(), self.files["robots.txt"])
+
+    def test_preserves_recorded_feed_and_advertises_it_on_tracker(self):
+        url = "https://asktherecruiter.com/blog/feed/layoffs"
+        self.files["layoffs.xml"] = (
+            '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>'
+            f'<title>Recorded feed</title><atom:link href="{url}" rel="self" />'
+            '<item><title>Recorded item</title><guid>alt-12-stable</guid>'
+            '<link>https://example.org/report</link></item></channel></rss>'
+        ).encode()
+        self.manifest["files"].append(self.file("layoffs.xml", "/blog/feed/layoffs"))
+        self.build()
+        self.assertEqual((self.output / "blog/feed/layoffs").read_bytes(), self.files["layoffs.xml"])
+        self.assertIn("Content-Type: application/rss+xml", (self.output / "_headers").read_text())
+        tracker = (self.output / "blog/ai-layoff-tracker/index.html").read_text()
+        self.assertIn(f'rel="alternate" type="application/rss+xml" href="{url}"', tracker)
+
+    def test_pilot_links_to_working_backend_forms_outside_static_output(self):
+        self.manifest["wordpress_forms"] = True
+        self.build()
+        tracker = (self.output / "blog/ai-layoff-tracker/index.html").read_text()
+        self.assertIn('href="https://asktherecruiter.com/blog/contact/"', tracker)
+        self.assertIn('href="https://asktherecruiter.com/blog/layoff-tracker/#alt-digest"', tracker)
+        self.assertNotIn("<form", tracker)
+
+    def test_pilot_cannot_shadow_the_backend_forms(self):
+        self.manifest["wordpress_forms"] = True
+        self.manifest["pages"].append(self.page("https://asktherecruiter.com/blog/contact/", 2))
+        with self.assertRaisesRegex(ValueError, "backend form page"):
+            self.build()
+        self.assertFalse(self.output.exists())
+
+    def test_build_shares_projection_with_noindex_widget_and_chart_embed(self):
+        projection = self.root / "tracker-data.json"
+        projection.write_text(json.dumps({
+            "schema": 1, "exported_at": "2026-11-22T06:44:13Z",
+            "records": [{"company": "Acme", "job_count": "12"},
+                        {"company": "Other", "job_count": "7"}],
+        }))
+        manifest = self.snapshot / "manifest.json"
+        manifest.write_text(json.dumps(self.manifest))
+        with patch.object(static_site, "TRACKER_CHUNK_BYTES", 48):
+            static_site.build(manifest, self.output, projection)
+        tracker = self.output / "blog/ai-layoff-tracker"
+        embed = (tracker / "embed/index.html").read_text()
+        self.assertIn('content="noindex, follow"', embed)
+        self.assertIn('data-tracker-embed', embed)
+        self.assertIn('data-match-cta="true"', embed)
+        self.assertIn('href="/blog/ai-layoff-tracker/embed/?view=chart"', (tracker / "index.html").read_text())
+        index_path = self.output / static_site.TRACKER_DATA_PATH
+        index = json.loads(index_path.read_text())
+        self.assertEqual(len(index["chunks"]), 2)
+        records = []
+        for filename in index["chunks"]:
+            chunk = (index_path.parent / filename).read_bytes()
+            self.assertLessEqual(len(chunk), 48)
+            records.extend(json.loads(chunk))
+        self.assertEqual(records, json.loads(projection.read_text())["records"])
 
     def test_missing_sitemap_page_fails_before_dist_exists(self):
         self.manifest["pages"].pop()
@@ -101,7 +185,14 @@ class StaticSite(unittest.TestCase):
                 self.manifest = original
 
     def test_missing_child_sitemap_and_changed_asset_fail(self):
-        self.manifest["sitemaps"] = ["https://asktherecruiter.com/blog/absent.xml"]
+        self.files["index.xml"] = (
+            b'<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            b'<sitemap><loc>https://asktherecruiter.com/blog/absent.xml</loc></sitemap>'
+            b'</sitemapindex>'
+        )
+        index = self.file("index.xml", "/blog/index.xml")
+        self.manifest["files"].append(index)
+        self.manifest["sitemaps"] = [index["url"]]
         with self.assertRaisesRegex(ValueError, "missing sitemap"):
             self.build()
         self.manifest["sitemaps"] = [self.manifest["files"][0]["url"]]

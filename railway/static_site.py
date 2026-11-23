@@ -16,6 +16,13 @@ from urllib.parse import unquote, urljoin, urlsplit
 ORIGIN = "https://asktherecruiter.com"
 CTA = (ORIGIN + "/?start=1&utm_source=ai-layoff-tracker&utm_medium=referral"
        "&utm_campaign=static_tracker#start-intake")
+TRACKER_URL = ORIGIN + "/blog/ai-layoff-tracker/"
+CONTACT_URL = ORIGIN + "/blog/contact/"
+NEWSLETTER_URL = ORIGIN + "/blog/layoff-tracker/"
+FEED_URL = ORIGIN + "/blog/feed/layoffs"
+EMBED_URL = TRACKER_URL + "embed/"
+TRACKER_DATA_PATH = "blog/static-assets/tracker-data.json"
+TRACKER_CHUNK_BYTES = 8 * 1024 * 1024
 ASSETS = Path(__file__).with_name("static_site_assets")
 FIELDS = ("company", "date", "country", "jobs", "source_url")
 BODY_TAGS = set("h1 h2 h3 h4 h5 h6 p div section article aside header footer main nav span strong em b i small abbr u sup sub ol ul li dl dt dd table thead tbody tfoot tr th td caption colgroup col figure figcaption img details summary blockquote q cite pre code br hr time a".split())
@@ -184,8 +191,72 @@ def records_table(rows: list[dict]) -> str:
     return "".join(parts)
 
 
-def render(page: dict) -> str:
+def tracker_table() -> str:
+    return (
+        '<div class="table-wrap"><table><thead><tr><th scope="col">Company</th>'
+        '<th scope="col">Date</th><th scope="col">Country</th><th scope="col">Jobs</th>'
+        '<th scope="col">Source</th></tr></thead><tbody></tbody></table></div>'
+    )
+
+
+TRACKER_MODULE = '<script type="module" src="/blog/static-assets/tracker.mjs"></script>'
+
+
+def tracker_panel() -> str:
+    selects = "".join(
+        f'<label>{label} <select name="{key}" multiple size="4"></select></label>'
+        for key, label in (("country", "Country"), ("industry", "Industry"),
+                           ("state", "US state"), ("source_type", "Source type"))
+    )
+    return (
+        f'<section data-tracker="/{TRACKER_DATA_PATH}"><h2>Search layoff records</h2>'
+        '<form class="tracker-filters" hidden><label>Company <input type="search" name="search"></label>'
+        '<label>From <input type="date" name="from"></label><label>To <input type="date" name="to"></label>'
+        f'{selects}<label><input type="checkbox" name="ai"> AI explicitly cited</label>'
+        '<button type="submit">Apply filters</button>'
+        '<button type="button" data-export="csv">Download CSV</button>'
+        '<button type="button" data-export="json">Download JSON</button></form>'
+        '<p role="status">Loading tracker data.</p><h3>Jobs by month</h3><ul data-chart></ul>'
+        f'{tracker_table()}'
+        '<button type="button" data-more hidden>Show 50 more records</button>'
+        '<noscript>Enable JavaScript to use tracker filters and charts.</noscript></section>'
+        '<p><a href="/blog/ai-layoff-tracker/embed/?view=widget">Open the latest records widget</a></p>'
+        '<p><a href="/blog/ai-layoff-tracker/embed/?view=chart">Open the monthly chart embed</a></p>'
+        f'{TRACKER_MODULE}'
+    )
+
+
+def embed_page() -> dict:
+    return {
+        "title": "AI Layoff Tracker embed",
+        "description": "Latest layoff records and monthly job counts.",
+        "canonical": EMBED_URL,
+        "robots": "noindex, follow",
+        "schema": [],
+        "body": (
+            f'<h1>AI Layoff Tracker embed</h1><section data-tracker="/{TRACKER_DATA_PATH}" data-tracker-embed>'
+            '<p role="status">Loading tracker data.</p>'
+            '<section data-embed-chart hidden><h2>Jobs by month</h2><ul data-chart></ul></section>'
+            f'<section data-embed-widget hidden><h2>Latest 10 matching records</h2>{tracker_table()}</section>'
+            '<noscript>Enable JavaScript to view the embed.</noscript></section>'
+            f'{TRACKER_MODULE}'
+        ),
+    }
+
+
+def render(page: dict, *, tracker: bool = False, feed: bool = False,
+           wordpress_forms: bool = False) -> str:
     esc = html.escape
+    content = tracker_panel() if tracker else records_table(page.get("rows", []))
+    alternate = (
+        f'<link rel="alternate" type="application/rss+xml" href="{FEED_URL}">' if feed else ""
+    )
+    forms = (
+        '<nav aria-label="Tracker contact and newsletter">'
+        f'<p><a href="{CONTACT_URL}">Send a tip or correction</a></p>'
+        f'<p><a href="{NEWSLETTER_URL}#alt-digest">Sign up for the layoff newsletter</a></p>'
+        '</nav>'
+    ) if wordpress_forms else ""
     nodes = []
     for node in page["schema"]:
         encoded = json.dumps(node, ensure_ascii=True).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
@@ -197,15 +268,77 @@ def render(page: dict) -> str:
             f'<meta name="robots" content="{esc(page["robots"], quote=True)}">'
             f'<link rel="canonical" href="{esc(page["canonical"], quote=True)}">'
             '<link rel="stylesheet" href="/blog/static-assets/site.css">'
-            + "".join(nodes) + '</head><body><header><a href="/blog/ai-layoff-tracker/">AI Layoff Tracker</a>'
+            + alternate + "".join(nodes) + '</head><body><header><a href="/blog/ai-layoff-tracker/">AI Layoff Tracker</a>'
             f'<a class="match-cta" data-match-cta="true" href="{esc(CTA, quote=True)}">Check my match, free</a>'
-            f'</header><main>{page["body"]}{records_table(page.get("rows", []))}</main>'
+            f'</header><main>{page["body"]}{content}{forms}</main>'
             '<script src="/blog/static-assets/site.js" defer></script></body></html>')
 
 
-def build(snapshot: Path, output: Path) -> int:
+def write_tracker_data(stage: Path, projection: dict) -> None:
+    """Keep each Pages asset well under the 25 MiB asset limit."""
+    directory = (stage / TRACKER_DATA_PATH).parent
+    chunks, rows = [], []
+    size = 2
+
+    def save():
+        name = f"tracker-records-{len(chunks) + 1}.json"
+        path = directory / name
+        with path.open("xb") as stream:
+            stream.write(b"[" + b",".join(rows) + b"]")
+        chunks.append(name)
+
+    for row in projection["records"]:
+        encoded = json.dumps(row, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        if len(encoded) + 2 > TRACKER_CHUNK_BYTES:
+            raise ValueError("tracker record is too large for a Pages chunk")
+        if size + len(encoded) + bool(rows) > TRACKER_CHUNK_BYTES:
+            save()
+            rows.clear()
+            size = 2
+        size += len(encoded) + bool(rows)
+        rows.append(encoded)
+    save()
+    index = {key: value for key, value in projection.items() if key != "records"}
+    index["chunks"] = chunks
+    (stage / TRACKER_DATA_PATH).write_text(json.dumps(index), encoding="utf-8")
+
+
+def build(snapshot: Path, output: Path, tracker_data: Path | None = None) -> int:
     data, files = load_snapshot(snapshot)
     validate_pages(data, files)
+    wordpress_forms = data.get("wordpress_forms", False)
+    if not isinstance(wordpress_forms, bool):
+        raise ValueError("wordpress_forms must be true or false")
+    if wordpress_forms:
+        backend_pages = {output_path(url, page=True) for url in (CONTACT_URL, NEWSLETTER_URL)}
+        outputs = {output_path(page["url"], page=True) for page in data["pages"]}
+        for url in files:
+            outputs.add(output_path(url))
+            outputs.add(output_path(url) / "index.html")
+        if backend_pages & outputs:
+            raise ValueError("static output would shadow a backend form page")
+    feed = FEED_URL in files
+    if feed:
+        root = ET.fromstring(files[FEED_URL])
+        self_links = root.findall("channel/{http://www.w3.org/2005/Atom}link")
+        if (root.tag != "rss" or root.get("version") != "2.0"
+                or not root.findtext("channel/title")
+                or [link.get("href") for link in self_links if link.get("rel") == "self"] != [FEED_URL]):
+            raise ValueError("RSS snapshot needs its recorded title and canonical self link")
+    if tracker_data is not None:
+        projection = json.loads(tracker_data.read_text(encoding="utf-8"))
+        if (projection.get("schema") != 1 or not projection.get("exported_at")
+                or not isinstance(projection.get("records"), list)
+                or not projection["records"]):
+            raise ValueError("expected a populated static tracker data projection")
+        if not any(page["url"] == TRACKER_URL for page in data["pages"]):
+            raise ValueError("snapshot needs the main tracker page to use tracker data")
+        embed_path = output_path(EMBED_URL, page=True)
+        if (any(output_path(page["url"], page=True) == embed_path for page in data["pages"])
+                or any(output_path(url) in {embed_path, embed_path.parent} for url in files)):
+            raise ValueError("snapshot already occupies the generated embed path")
+        if any(output_path(url) == Path(TRACKER_DATA_PATH) for url in files):
+            raise ValueError("snapshot already occupies the tracker data path")
     if output.exists():
         raise ValueError("output already exists; choose a clean build directory")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -219,18 +352,34 @@ def build(snapshot: Path, output: Path) -> int:
         for page in data["pages"]:
             dest = stage / output_path(page["url"], page=True)
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(render(page), encoding="utf-8")
+            tracker = tracker_data is not None and page["url"] == TRACKER_URL
+            dest.write_text(
+                render(page, tracker=tracker, feed=feed and page["url"] == TRACKER_URL,
+                       wordpress_forms=wordpress_forms and page["url"] == TRACKER_URL),
+                encoding="utf-8",
+            )
         shutil.copytree(ASSETS, stage / "blog/static-assets")
+        if tracker_data is not None:
+            write_tracker_data(stage, projection)
+            embed = stage / embed_path
+            embed.parent.mkdir(parents=True, exist_ok=True)
+            embed.write_text(render(embed_page()), encoding="utf-8")
+        if feed:
+            (stage / "_headers").write_text(
+                "/blog/feed/layoffs\n  Content-Type: application/rss+xml; charset=utf-8\n",
+                encoding="utf-8",
+            )
         os.replace(stage, output)
-    return len(data["pages"])
+    return len(data["pages"]) + int(tracker_data is not None)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--snapshot", type=Path, required=True)
     parser.add_argument("--out", type=Path, default=Path("dist"))
+    parser.add_argument("--tracker-data", type=Path, help="verified output from static_data.py")
     args = parser.parse_args(argv)
-    print(f"Built {build(args.snapshot, args.out)} pages from the supplied public snapshot")
+    print(f"Built {build(args.snapshot, args.out, args.tracker_data)} pages from the supplied public snapshot")
 
 
 if __name__ == "__main__":

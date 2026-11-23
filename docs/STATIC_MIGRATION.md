@@ -1,6 +1,6 @@
 # AI Layoff Tracker static migration
 
-Status: preview build and offline snapshot contract. Production URL and SEO parity are
+Status: offline build contract and public backup data projection. Production URL and SEO parity are
 blocked on a published-page snapshot. This is not a deploy or cutover approval.
 Scope: dk-forge/todo#2880, ALT first. Talent Intelligence Tracker is a later pilot.
 
@@ -57,6 +57,37 @@ files in separate GitHub releases, but those are not the normalized published
 reference API responses. Include the public reference projections and their
 revision dates in the new snapshot publisher. Do not substitute raw source
 files for the displayed, normalized reference series.
+
+## Build-only data publisher
+
+Run **Static site (build only)** with `backup_tag=backup-2026-11-22` to
+produce the `alt-static-data` artifact, or run this against the downloaded
+public release files:
+
+```sh
+python railway/static_data.py --backup backup-input --out static-data/tracker-data.json
+```
+
+The publisher reads only `manifest.json` and the layoffs, events and source
+reports assets. It checks compressed sizes, uncompressed SHA-256 checksums,
+row counts, column allowlists and the existing privacy scan. The output keeps
+the capture time, source checksums, selected public filter fields, canonical
+event membership, evidence URLs and superset membership. Consumers can use
+canonical membership plus evidence for sourced views and use
+`superset_of = 0` for aggregate views that exclude overlapping records.
+Table rows retain individual records, including subset members. The data is
+separate from the built HTML and carries the backup's freshness. A local run
+with the November 22 release projected 74,706 records.
+
+The live sitemap request from the cloud environment was denied by its proxy
+with HTTP 403 at CONNECT. The tests cover independent sitemap fixtures and
+check each generated HTML title, canonical and exact tracked CTA. A captured
+production sitemap and page export are still needed to run the production
+coverage gate. The remaining runtime work includes wiring the static data
+into search, filters, charts and aggregates, publishing normalized reference
+series after successful updates, and migrating feeds, exports, embeds,
+contact and newsletter handling. Editorial pages, redirect targets and legacy
+archive assets need to be captured before the build can verify their parity.
 
 ## Public URL inventory
 
@@ -156,6 +187,47 @@ mail delivery or service variable is changed by this work. Preview deployment
 and cutover remain separate owner-controlled steps. Rollback is to keep the
 existing site and remove the future Pages route; retain WordPress for 30 days
 after the later approved cutover.
+
+## Static pilot checklist
+
+- [x] Main tracker reads the public backup projection when the build has
+  `--tracker-data static-data/tracker-data.json`. It supports company search,
+  inclusive layoff-date ranges, explicit AI attribution and multi-select
+  country, US state, industry and source type. The monthly jobs chart excludes
+  superset members. The table keeps them visible.
+- [x] CSV and JSON downloads use the full filtered set, including rows beyond
+  the visible page. They include attribution and the backup timestamp.
+  CSV guards cells against spreadsheet formula execution.
+- [x] A captured RSS 2.0 file at `/blog/feed/layoffs` is copied byte for byte,
+  served with an RSS content type and advertised on the tracker. The build
+  checks its canonical self link.
+- [x] An opt-in pilot can set `"wordpress_forms": true` in the snapshot
+  manifest. Contact and newsletter links use the existing WordPress forms.
+  Keep `/blog/contact/` and `/blog/layoff-tracker/` on that backend, with
+  its existing submission, confirmation and unsubscribe routes. The build
+  rejects a snapshot that would shadow either form page.
+- [x] A noindex widget and monthly chart share that projection at
+  `/blog/ai-layoff-tracker/embed/?view=widget` and `?view=chart`. They
+  accept company, country, industry, state, sources, from, to and ai filters.
+  The build splits the projection into assets under 8 MiB each. A local
+  build with the public backup produced seven chunks for 74,706 records.
+- [ ] Claude to capture the live sitemap, URL and SEO baseline, including the
+  published RSS document, redirect inventory and archive assets. Run the
+  production coverage gate with those inputs.
+- [ ] Preserve the legacy `/blog/?feed=layoffs` alias at routing time and
+  publish current RSS output after curated updates.
+- [ ] Complete dashboard parity for remaining filters, alternate date bases,
+  charts, reference series and the legacy CSV/JSON URL and schema contracts.
+  Verify startup and response times on a cold mobile connection.
+- [ ] Keep the legacy query-based widget and chart routes with their existing
+  backend during the pilot. Migrate their remaining chart types and filters,
+  and verify frame headers and old embed URLs before switching their routing.
+- [ ] Validate contact and newsletter submission and confirmation on the
+  retained backend. Decide how to preserve those flows before migrating
+  the two pages that host them.
+- [ ] Refresh the curated projection and normalized reference series after
+  successful data updates. A run against the weekly release is a point-in-time
+  snapshot.
 
 ## Build-only preview, 23 November 2026
 
