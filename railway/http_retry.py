@@ -23,6 +23,12 @@ the code whose job is to behave well when things are broken must not be
 breakable by dependency resolution. `requests` is therefore an OPTIONAL import,
 so this module loads on a runner that has no third-party packages.
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import json
 import re
 import time
@@ -167,14 +173,14 @@ def get_with_retry(url, params=None, headers=None, attempts=3, timeout=60, backo
     for attempt in range(attempts):
         try:
             sent_headers = dict(headers or DEFAULT_UA)
-            r = get(url, params=params, headers=sent_headers,
+            r = blog_reads.get(url, getter=get, params=params, headers=sent_headers,
                     timeout=timeout)
             cookie = human_challenge_cookie(r.status_code, getattr(r, "text", ""))
-            if cookie:
+            if cookie and not blog_reads.eligible(url, sent_headers):
                 # The challenge request did not reach WordPress. Replay the
                 # same GET once, just as the returned browser script does.
                 sent_headers["Cookie"] = cookie
-                r = get(url, params=params, headers=sent_headers,
+                r = blog_reads.get(url, getter=get, params=params, headers=sent_headers,
                         timeout=timeout)
             if r.status_code not in retried:
                 return r

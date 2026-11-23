@@ -49,6 +49,11 @@ an ANSI escape or a `::error::` line of its own into the run log.
 
 Stdlib only, no keys, safe to run from anywhere.
 """
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import argparse
 import json
 import re
@@ -196,8 +201,11 @@ def fetch(url, timeout=TIMEOUT_S, cookie="", resolve=""):
         # curl carried this cookie, so this carries it too. It is a public
         # challenge marker, not a credential, and it is never printed.
         req.add_header("Cookie", cookie)
+    opener = _opener(resolve)
+    if blog_reads.eligible(url, dict(req.header_items())):
+        opener.add_handler(blog_reads.NoRedirect())
     try:
-        with _opener(resolve).open(req, timeout=timeout) as resp:
+        with blog_reads.urlopen(req, timeout=timeout, stream_opener=opener.open) as resp:
             return resp.status, resp.headers.get("Content-Type", ""), resp.read(65536)
     except urllib.error.HTTPError as exc:
         with exc:

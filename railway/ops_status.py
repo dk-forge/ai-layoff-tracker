@@ -42,6 +42,12 @@ Exit codes:
 
     python3 railway/ops_status.py
 """
+
+try:
+    import blog_read_cache as blog_reads
+except ModuleNotFoundError:
+    from railway import blog_read_cache as blog_reads
+
 import json
 import os as _os
 import re
@@ -118,7 +124,7 @@ import orphaned_secrets  # noqa: E402
 def _get(url, browser=False):
     req = urllib.request.Request(url, headers={"User-Agent": BROWSER_UA if browser else UA,
                                                "Accept": "application/json"})
-    return urllib.request.urlopen(req, timeout=40)
+    return blog_reads.urlopen(req, timeout=40)
 
 
 def _is_egress_block(exc):
