@@ -197,12 +197,17 @@
       "last": 1794225755,
       "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 STALE source_audit: last reported 38.7d ago (expected <= 35d): collector may have stopped"
     },
+    "weekly-health-digest-autonomy-tripwire:main:fd94c0379f982e19": {
+      "first": 1795435313,
+      "last": 1795435313,
+      "subject": "CI RED: Weekly health digest (autonomy tripwire) \u2014 could not read source-health: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))"
+    },
     "zz-exposure-probe-temporary-branch-only:claude-exposure-probe-tmp:e209e89eb82e6f01": {
       "first": 1791240775,
       "last": 1791240775,
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-23T08:53:31+00:00",
+  "updated_at": "2026-11-23T12:01:54+00:00",
   "version": 1
 }
