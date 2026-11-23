@@ -167,6 +167,11 @@
       "last": 1795372721,
       "subject": "CI RED: Retained evidence hash backfill \u2014 ^[[36;1m        echo \"Evidence-hash call failed after $attempt attempts (last HTTP $http)\" >&2^[[0m"
     },
+    "review-held-rows-two-referees:main:0502244882b4ec52": {
+      "first": 1795418632,
+      "last": 1795418632,
+      "subject": "CI RED: Review held rows (two referees) \u2014 urllib.error.HTTPError: HTTP Error 500: Internal Server Error"
+    },
     "review-held-rows-two-referees:main:3b0a4a7721dfc40b": {
       "first": 1795245639,
       "last": 1795245639,
@@ -193,6 +198,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-23T05:30:59+00:00",
+  "updated_at": "2026-11-23T07:23:52+00:00",
   "version": 1
 }
