@@ -682,8 +682,9 @@ class NoPaidCallsAndNoFetching(unittest.TestCase):
             if not isinstance(node, ast.Call):
                 continue
             fn = node.func
-            if not (isinstance(fn, ast.Attribute)
-                    and isinstance(fn.value, ast.Name) and fn.value.id == "requests"):
+            if not (isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name)
+                    and (fn.value.id == "requests" or
+                         (fn.value.id == "blog_reads" and fn.attr in ("get", "urlopen")))):
                 continue
             url = node.args[0] if node.args else None
             names = {n.id for n in ast.walk(url) if isinstance(n, ast.Name)} if url else set()
