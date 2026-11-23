@@ -132,10 +132,20 @@
       "last": 1795196216,
       "subject": "CI RED: Live data-integrity check \u2014 worldwide_all_time: CONTAINMENT FAILED on a pair this slice is part of, baseline deliberately NOT advanced (the finding is the difference betwee"
     },
+    "live-surface-check:live.data:8b2aad5ae1ea05cc": {
+      "first": 1795379304,
+      "last": 1795379304,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 500 \u2014 server regression, not a blip"
+    },
     "live-surface-check:live.data:c013f474c38560e8": {
       "first": 1795357663,
       "last": 1795357663,
       "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: could not reach the live site (The read operation timed out) \u2014 this head"
+    },
+    "live-surface-check:live.data:ed2b7d92e283d6b7": {
+      "first": 1795401078,
+      "last": 1795401078,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: Spirit Airlines counts once (news vs WARN): live API returned HTTP 500 \u2014 server regression, not a blip"
     },
     "live-surface-check:live.data:feb152844d9e6171": {
       "first": 1795206470,
@@ -147,10 +157,25 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
+    "page-weight-budget:main:3eb4d7f49ee7d7ab": {
+      "first": 1795411858,
+      "last": 1795411858,
+      "subject": "CI RED: Page weight budget \u2014 UNKNOWN https://asktherecruiter.com/blog/ai-layoff-tracker/: HTTPError: HTTP Error 500: Internal Server Error"
+    },
+    "retained-evidence-hash-backfill:main:fe84be10b55b0285": {
+      "first": 1795372721,
+      "last": 1795372721,
+      "subject": "CI RED: Retained evidence hash backfill \u2014 ^[[36;1m        echo \"Evidence-hash call failed after $attempt attempts (last HTTP $http)\" >&2^[[0m"
+    },
     "review-held-rows-two-referees:main:3b0a4a7721dfc40b": {
       "first": 1795245639,
       "last": 1795245639,
       "subject": "CI RED: Review held rows (two referees) \u2014 spend $0.0195; 1 row(s) left held"
+    },
+    "subscriber-watch:main:76147e63e99c3a52": {
+      "first": 1795390933,
+      "last": 1795390933,
+      "subject": "CI RED: Subscriber watch \u2014 Subscriber watch UNKNOWN: could not read the stats route (TimeoutError)."
     },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
@@ -168,6 +193,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-22T17:37:41+00:00",
+  "updated_at": "2026-11-23T05:30:59+00:00",
   "version": 1
 }
