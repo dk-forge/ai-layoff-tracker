@@ -78,6 +78,14 @@ class Parity(unittest.TestCase):
                 self.assertFalse(result['passed'])
                 self.assertIn(field, result['pages'][0]['differences'])
 
+    def test_empty_seo_link_hrefs_never_pass(self):
+        for rel in ('canonical', 'alternate'):
+            for broken in ('', ' href=""', ' href="   "'):
+                with self.subTest(rel=rel, broken=broken):
+                    original = f'rel="{rel}"' + (' hreflang="en"' if rel == 'alternate' else '')
+                    self.write(HUB, page().replace(original + f' href="{HUB}"', original + broken))
+                    self.assertFalse(self.check()['passed'])
+
     def test_missing_or_hidden_or_untagged_cta_fails(self):
         for html in (page().replace('<a href=', '<a hidden href='),
                      page().replace('<a href=', '<a class="hidden" href='),

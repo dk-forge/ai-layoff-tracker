@@ -33,7 +33,8 @@ class Metadata(HTMLParser):
             self.values['description'].append(attrs.get('content', '').strip())
         if tag == 'link':
             rel = attrs.get('rel', '').lower().split()
-            href = urljoin(self.url, attrs.get('href', ''))
+            raw_href = (attrs.get('href') or '').strip()
+            href = urljoin(self.url, raw_href) if raw_href else ''
             if 'canonical' in rel:
                 self.values['canonical'].append(href)
             if 'alternate' in rel and attrs.get('hreflang'):
