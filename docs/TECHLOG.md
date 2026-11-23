@@ -1,3 +1,14 @@
+## 2026-11-23 - Weekly benchmark: layoff 18/25; prefilter keeps "cutting N others" and "voluntary departures"
+
+**What.** `docs/benchmarks/2026-11-23.md`, scored live on 2026-11-23 (deferred from 11-22 by the host outage). Strict recall 18/25 (last week 19/25, different list). Seven misses: 4 no row (Dutch government, Olympus, NatWest, Renault; all non-US), 3 wrong count (Volvo Cars, Ecco, Children's Place). Median time to listing 3 days. No ranking is claimed; no competitor was run. For Renault (2026-11-17) three of the real Google News headlines, "cutting 1,000 others" and "1,000 voluntary departures", named no workforce noun and the free title prefilter dropped them; `HEADCOUNT_PATTERN` now keeps them. Other Renault and NatWest headlines already passed the prefilter and still made no row, so the downstream cause is open. No spend, no backfill, no plugin change, no deploy.
+
+| Date | Layoff strict recall | Prior | Top miss cause |
+|---|---|---|---|
+| 2026-11-23 | 18/25 | 19/25 (2026-11-15, different list) | no row on non-US announcements (Dutch government, Olympus, NatWest, Renault) |
+
+**Guard:** railway/tests/test_google_news_prefilter.py (3 kept headlines, 2 dropped lookalikes)
+**Class:** novel (a headline shape the deterministic prefilter missed)
+
 ## 2026-11-22 - 2.20.358 Talent daily email groups confirmed employer aliases
 
 The daily composer merges the confirmed Mistral / Mistral AI alias and legal suffix variants only when signal type, headcount and location agree. Each source link survives. Job-board observations stay separate, including equal net increases with different board totals. Raw totals and provenance rules are unchanged. One headline, three metrics and a tracked match button lead the email; detailed counts sit under How we count. Missing or stale open-roles data is labelled not available. The email renderer gives this known button its own inline style and the existing dark-mode button class.
