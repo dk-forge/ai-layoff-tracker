@@ -1,0 +1,99 @@
+name: Static URL and SEO parity
+
+on:
+  pull_request:
+    paths:
+      - 'railway/static_parity*.py'
+      - 'railway/tests/test_static_parity.py'
+      - '.github/workflows/static-parity.yml'
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: 'Successful static-build workflow run containing the artifact to compare'
+        required: true
+        type: string
+      artifact_name:
+        description: 'Static artifact'
+        type: choice
+        options: [alt-static-site, alt-static-preview]
+        default: alt-static-site
+      max_requests:
+        description: 'Maximum new live GETs; zero removes the request-count limit'
+        type: number
+        default: 500
+      max_seconds:
+        description: 'Comparison deadline in seconds, at most 21000'
+        type: number
+        default: 3000
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Test sitemap, metadata, CTA and request-cache contracts offline
+        working-directory: railway
+        run: python -m unittest tests.test_static_parity -v
+
+  compare:
+    if: github.event_name == 'workflow_dispatch'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    concurrency:
+      group: alt-static-parity-live
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Validate the build reference
+        env:
+          BUILD_RUN: ${{ inputs.build_run_id }}
+        run: '[[ "$BUILD_RUN" =~ ^[0-9]+$ ]]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+          path: dist
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/static-parity
+          key: alt-static-parity-live-${{ github.run_id }}
+          restore-keys: alt-static-parity-live-
+      - name: Compare every discovered ALT URL with the supplied static build
+        env:
+          REQUEST_BUDGET: ${{ inputs.max_requests }}
+          TIME_BUDGET: ${{ inputs.max_seconds }}
+        run: |
+          [[ "$REQUEST_BUDGET" =~ ^[0-9]+$ ]]
+          [[ "$TIME_BUDGET" =~ ^[0-9]+$ && "$TIME_BUDGET" -ge 1 && "$TIME_BUDGET" -le 21000 ]]
+          python railway/static_parity.py --dist dist --report parity-report.json \
+            --max-requests "$REQUEST_BUDGET" --max-seconds "$TIME_BUDGET"
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .cache/static-parity
+          key: alt-static-parity-live-${{ github.run_id }}
+      - name: Keep the report even when parity fails
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: alt-static-parity-report
+          path: parity-report.json
+          if-no-files-found: warn
+          retention-days: 14
