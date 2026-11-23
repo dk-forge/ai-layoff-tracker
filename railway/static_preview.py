@@ -10,6 +10,7 @@ import re
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import unquote
 from urllib.request import urlopen
 from xml.sax.saxutils import escape
 
@@ -71,10 +72,17 @@ def build_preview(state_path: Path, backups: Path, output: Path) -> int:
         if not selected:
             continue
         slug = company["slug"]
-        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug) or slug in seen:
-            raise ValueError("invalid or duplicate recorded company slug")
-        seen.add(slug)
+        token = r"(?:[a-z0-9]|%[0-9a-fA-F]{2})"
+        if not re.fullmatch(token + r"+(?:-" + token + r"+)*", slug):
+            raise ValueError("invalid recorded company slug")
+        decoded = unquote(slug, errors="strict")
+        if "/" in decoded or "\\" in decoded or re.search(r"[\x00-\x1f\x7f]", decoded):
+            raise ValueError("invalid recorded company slug")
         path = f"/blog/company-layoffs/{slug}/"
+        destination = static_site.output_path(base + path, page=True)
+        if destination in seen:
+            raise ValueError("duplicate recorded company slug destination")
+        seen.add(destination)
         label = company["display_name"]
         page(path, label, selected)
         links.append(f'<li><a href="{path}">{html.escape(label)}</a></li>')

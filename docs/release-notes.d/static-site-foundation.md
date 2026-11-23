@@ -20,3 +20,7 @@ reviewed source rows under recorded company slugs. Every preview page is
 non-indexable and has a tracked match CTA. PR and backup-completion builds
 upload dist as a review artifact. This is a preview subset, not production
 sitemap or SEO parity, and does not replace the WordPress data publisher.
+
+Recorded percent-encoded WordPress company slugs now retain their public URLs
+without double encoding. Preview paths use the shared safety validator and reject
+encoded separators, controls, traversal and duplicate decoded destinations.

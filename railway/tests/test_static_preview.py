@@ -22,8 +22,8 @@ class Preview(unittest.TestCase):
                       "source_url": "https://example.org/source", "review_status": "verified",
                       "superset_of": 0, "excerpt": "NOT PUBLIC IN THIS PROJECTION"}]
 
-    def write(self):
-        tables = {"layoffs": self.rows, "company_directory": [
+    def write(self, companies=None):
+        tables = {"layoffs": self.rows, "company_directory": companies if companies is not None else [
             {"company_key": "example", "slug": "recorded-slug", "display_name": "Example & Co"}]}
         for name, rows in tables.items():
             raw = "\n".join(json.dumps(r) for r in rows).encode()
@@ -89,3 +89,31 @@ class Preview(unittest.TestCase):
             self.assertEqual(call.args, ("https://github.com/dk-forge/ai-layoff-tracker/releases/"
                                         f"download/backup-2026-11-22/{name}.jsonl.gz",))
         self.assertEqual(static_preview.read_table(self.root / "download", self.state, "layoffs"), self.rows)
+
+    def test_recorded_percent_encoded_company_slug_builds_without_double_encoding(self):
+        slug = "example%e2%80%a0"
+        companies = [{"company_key": "example", "slug": slug, "display_name": "Example & Co"}]
+        self.assertEqual(3, static_preview.build_preview(self.write(companies), self.root, self.root / "dist"))
+        page = (self.root / "dist/blog/company-layoffs/example†/index.html").read_text()
+        directory = (self.root / "dist/blog/company-layoffs/index.html").read_text()
+        self.assertIn(f'href="https://asktherecruiter.com/blog/company-layoffs/{slug}/"', page)
+        self.assertIn(f'href="/blog/company-layoffs/{slug}/"', directory)
+        self.assertNotIn("%25e2", directory)
+        self.assertIn("Check my match, free", page)
+        self.assertIn("utm_source=ai-layoff-tracker", page)
+
+    def test_encoded_slugs_cannot_escape_a_single_safe_directory(self):
+        for slug in ("example%2fchild", "%2e%2e", "example%5cchild", "example%00",
+                     "example%252fchild", "example%zz", "example%ff"):
+            with self.subTest(slug=slug):
+                companies = [{"company_key": "example", "slug": slug, "display_name": "Example & Co"}]
+                with self.assertRaises(ValueError):
+                    static_preview.build_preview(self.write(companies), self.root, self.root / "dist")
+                self.assertFalse((self.root / "dist").exists())
+
+    def test_encoded_aliases_cannot_overwrite_a_company_page(self):
+        companies = [{"company_key": "example", "slug": slug, "display_name": "Example & Co"}
+                     for slug in ("recorded-slug", "%72ecorded-slug")]
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            static_preview.build_preview(self.write(companies), self.root, self.root / "dist")
+        self.assertFalse((self.root / "dist").exists())
