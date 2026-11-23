@@ -98,6 +98,14 @@ class Parity(unittest.TestCase):
                 self.assertFalse(result['passed'])
                 self.assertIn('missing_static_cta', result['pages'][0]['errors'])
 
+    def test_a_tagged_brand_or_navigation_link_cannot_stand_in_for_the_cta(self):
+        for label in ('Ask The Recruiter', 'Home', 'Resume'):
+            with self.subTest(label=label):
+                self.write(HUB, page().replace('Check my match, free', label))
+                result = self.check()
+                self.assertFalse(result['passed'])
+                self.assertIn('missing_static_cta', result['pages'][0]['errors'])
+
     def test_partial_opacity_does_not_hide_a_visible_cta(self):
         self.write(HUB, page().replace('<a href=', '<a style="opacity:0.5" href='))
         self.assertTrue(self.check()['passed'])
