@@ -156,6 +156,17 @@ class Budget(unittest.TestCase):
         self.assertIn('already attempted', second)
         self.assertEqual(send.call_count, 1)
 
+    def test_a_head_read_spends_the_budget_without_becoming_a_get_body(self):
+        from urllib.request import Request
+        calls = []
+        def open_one(request, **kwargs):
+            calls.append(request.get_method())
+            return 200, {}, b''
+        cache.urlopen(Request(URL, headers=UA, method='HEAD'), reader=self.reader, open_one=open_one)
+        with self.assertRaises(cache.ReadLimited):
+            cache.urlopen(URL, headers=UA, reader=self.reader, open_one=open_one)
+        self.assertEqual(calls, ['HEAD'])
+
 
 if __name__ == '__main__':
     unittest.main()

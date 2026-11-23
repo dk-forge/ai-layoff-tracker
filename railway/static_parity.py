@@ -1,6 +1,9 @@
 """Compare an ALT static artifact with independently fetched live sitemap pages."""
 from __future__ import annotations
 
+from email.message import Message
+import blog_read_cache as blog_reads
+
 import argparse
 import fcntl
 import hashlib
@@ -57,6 +60,7 @@ class LivePages:
         self.last_request = 0.0
         self.deadline = time.monotonic() + max_seconds if max_seconds else float('inf')
         self.opener = build_opener(NoRedirect())
+        self.reader = blog_reads.ReadCache()
 
     def response(self, url):
         validate_url(url)
@@ -69,22 +73,28 @@ class LivePages:
                 return cached
             if (self.max_requests and self.requests >= self.max_requests) or time.monotonic() >= self.deadline:
                 raise FetchBudgetExceeded('live request budget exhausted; comparison is incomplete')
-            time.sleep(max(0, self.interval - (time.monotonic() - self.last_request)))
             result = {'requested_at': time.time(), 'status': 0, 'body': '', 'location': ''}
-            self.requests += 1
-            try:
+            def capture():
+                time.sleep(max(0, self.interval - (time.monotonic() - self.last_request)))
+                self.requests += 1
                 request = Request(url, headers={'User-Agent': 'AiLayoffTracker/1.0 (+https://asktherecruiter.com)'})
                 try:
                     response = self.opener.open(request, timeout=30)
                 except HTTPError as exc:
                     response = exc
                 with response:
-                    result['status'] = response.status
-                    result['location'] = response.headers.get('Location', '')
                     content = response.read(10_000_001)
                     if len(content) > 10_000_000:
                         raise OSError('live page exceeds capture size limit')
-                    result['body'] = content.decode(response.headers.get_content_charset() or 'utf-8', errors='replace')
+                    return response.status, dict(response.headers.items()), content
+            try:
+                shared = self.reader.get(url, capture, variant='static-parity')
+                headers = Message()
+                for name, value in shared['headers'].items():
+                    headers[name] = value
+                result.update(requested_at=shared['requested_at'], status=shared['status'],
+                              location=headers.get('Location', ''),
+                              body=shared['body'].decode(headers.get_content_charset() or 'utf-8', errors='replace'))
             except (OSError, LookupError):
                 result['status'] = 0
             finally:

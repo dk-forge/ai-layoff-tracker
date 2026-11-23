@@ -35,8 +35,9 @@ The default directory is ~/.cache/alt-public-pages. ALT_BLOG_CACHE_DIR can point
 to an existing private persistent directory. Workers sharing it share the cap;
 independent filesystems do not. A single worker or shared persistent cache is
 required for a global cap across machines. This PR does not configure or deploy
-that storage. The manual static-parity workflow is a separate PR and must share
-this budget before both checks are operated on the same worker.
+that storage. The static-parity checker also uses this shared budget. Its report cache may
+serve a public response without another origin read. It never restores over
+the common worker budget from an older Actions cache snapshot.
 
 ## Validation and rollback
 

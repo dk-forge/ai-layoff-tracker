@@ -114,7 +114,7 @@ class ReadCache:
             if existing and now - existing['requested_at'] < TTL:
                 if existing['kind'] != 'response' or existing.get('variant', '') != variant:
                     raise ReadLimited(TTL - (now - existing['requested_at']))
-                return {'status': existing['status'], 'headers': existing['headers'],
+                return {'requested_at': existing['requested_at'], 'status': existing['status'], 'headers': existing['headers'],
                         'body': base64.b64decode(existing['body'])}
             record = {'requested_at': now, 'kind': 'pending', 'variant': variant}
             self.write(path, record)
@@ -125,7 +125,7 @@ class ReadCache:
                 raise
             public_headers = {k: v for k, v in headers.items() if k.lower() not in
                               {'set-cookie', 'set-cookie2', 'authentication-info'}}
-            result = {'status': status, 'headers': public_headers, 'body': body}
+            result = {'requested_at': now, 'status': status, 'headers': public_headers, 'body': body}
             if not retain or body is None or len(body) > MAX_BODY:
                 self.write(path, {**record, 'kind': 'not_retained'})
             else:
@@ -192,7 +192,7 @@ def urlopen(request, data=None, timeout=30, *, headers=None, reader=None, open_o
     while current not in seen and len(seen) < 8:
         seen.add(current)
         req = Request(current, headers=sent, data=request.data, method=request.get_method())
-        result = reader.get(current, lambda: (open_one or _open_one)(req, timeout=timeout, **kwargs), _variant(sent) + ':urllib', retain=cacheable(current, sent))
+        result = reader.get(current, lambda: (open_one or _open_one)(req, timeout=timeout, **kwargs), _variant(sent) + ':urllib:' + request.get_method(), retain=cacheable(current, sent, request.get_method()))
         message = Message()
         for name, value in result['headers'].items():
             message[name] = value
@@ -209,11 +209,11 @@ def urlopen(request, data=None, timeout=30, *, headers=None, reader=None, open_o
     raise OSError('public blog redirect loop or excessive chain')
 
 
-def get(url, params=_PARAMS_UNSET, *, getter=None, reader=None, **kwargs):
+def get(url, params=_PARAMS_UNSET, *, getter=None, reader=None, _method='GET', **kwargs):
     if params is not _PARAMS_UNSET:
         kwargs["params"] = params
     headers = kwargs.get('headers') or {}
-    if not eligible(url, headers):
+    if not eligible(url, headers, _method):
         if getter is None:
             import requests
             getter = requests.get
@@ -221,7 +221,7 @@ def get(url, params=_PARAMS_UNSET, *, getter=None, reader=None, **kwargs):
     import requests
     getter = getter or requests.get
     prepared = requests.Request('GET', url, params=kwargs.get('params')).prepare().url
-    if not eligible(prepared, headers):
+    if not eligible(prepared, headers, _method):
         return getter(url, **kwargs)
     prepared = _fresh_url(prepared, headers)
     reader = reader or ReadCache()
@@ -238,7 +238,7 @@ def get(url, params=_PARAMS_UNSET, *, getter=None, reader=None, **kwargs):
             fresh.append(response)
             return response.status_code, dict(response.headers), None if kwargs.get('stream') else response.content
         try:
-            result = reader.get(current, fetch, _variant(headers) + ':requests', retain=cacheable(current, headers))
+            result = reader.get(current, fetch, _variant(headers) + ':requests:' + _method, retain=cacheable(current, headers, _method))
         except ReadLimited as exc:
             raise requests.RequestException(str(exc)) from None
         if fresh:
@@ -253,7 +253,7 @@ def get(url, params=_PARAMS_UNSET, *, getter=None, reader=None, **kwargs):
         if follow and response.status_code in (301, 302, 303, 307, 308):
             current = urljoin(current, response.headers.get('Location', ''))
             response.close()
-            if not eligible(current, headers):
+            if not eligible(current, headers, _method):
                 raise requests.RequestException('public blog redirect left the cache scope')
             continue
         return response
@@ -264,6 +264,6 @@ def request(method, url, *, requester=None, **kwargs):
     if requester is None:
         import requests
         requester = requests.request
-    if method.upper() != 'GET':
+    if method.upper() not in ('GET', 'HEAD'):
         return requester(method, url, **kwargs)
-    return get(url, getter=lambda target, **options: requester(method, target, **options), **kwargs)
+    return get(url, _method=method.upper(), getter=lambda target, **options: requester(method, target, **options), **kwargs)
