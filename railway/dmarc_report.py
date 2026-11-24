@@ -103,7 +103,7 @@ def analyse(paths: list[str]) -> dict:
 
 
 def report(paths: list[str]) -> int:
-    """0 = every observed sender survives enforcement. 2 = at least one does not."""
+    """0 = every observed sender survives. 1 = not ready. 3 = missing or no records."""
     for raw in paths:
         if not pathlib.Path(raw).exists():
             print(f"  MISSING  {raw}")

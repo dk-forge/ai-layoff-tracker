@@ -18,12 +18,16 @@
  */
 if (!defined('ABSPATH')) exit;
 
-function alt_atr_cta_url($campaign) {
+function alt_atr_cta_url($campaign, $placement = '') {
     $campaign = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $campaign));
+    $placements = array('sticky_bar' => 'sticky', 'tracker_home_fold' => 'hero', 'widget' => 'widget', 'llms_txt' => 'llms_txt');
+    $placement = $placement !== '' ? $placement : ($placements[$campaign] ?? 'inline');
+    $placement = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $placement));
     return add_query_arg(array(
         'utm_source'   => 'ai-layoff-tracker',
         'utm_medium'   => 'referral',
         'utm_campaign' => $campaign !== '' ? $campaign : 'directory',
+        'utm_content'  => $placement !== '' ? $placement : 'inline',
     ), rtrim(alt_resume_cta_base(), '/') . '/resume-score');
 }
 
@@ -34,7 +38,7 @@ function alt_atr_cta_line_html($campaign, $company = '') {
         : 'Affected by a layoff?';
     return '<aside class="alt-atr-cta" aria-label="Resume help">'
         . '<b>' . $lead . '</b> Check how your resume fits your next role. Free, no card. '
-        . '<a href="' . esc_url(alt_atr_cta_url($campaign)) . '" target="_blank" rel="noopener nofollow">'
+        . '<a href="' . esc_url(alt_atr_cta_url($campaign, 'inline')) . '" target="_blank" rel="noopener nofollow">'
         . 'Check my resume</a></aside>';
 }
 
