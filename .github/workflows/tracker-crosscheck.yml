@@ -54,3 +54,4 @@ jobs:
           name: coverage-gaps
           path: railway/tracker_crosscheck_gaps.json
           if-no-files-found: ignore
+          retention-days: 7

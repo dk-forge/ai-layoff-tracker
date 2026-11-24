@@ -79,3 +79,4 @@ jobs:
           name: edgar-recall-probe
           path: ${{ runner.temp }}/edgar-recall-probe.json
           if-no-files-found: warn
+          retention-days: 7

@@ -96,4 +96,4 @@ jobs:
           name: alt-static-parity-report
           path: parity-report.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
