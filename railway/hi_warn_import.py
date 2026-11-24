@@ -24,12 +24,26 @@ import spend
 #: was upserted, and the terminal health note was never posted. A job that
 #: stops ITSELF finishes the notice in hand, posts what it has and exits 0.
 #:
+#: 1500s left only a flat 60s against the kill, with no room for what runs
+#: BEFORE this script's own clock starts ticking: checkout, the pip-cache
+#: restore, the spend guard, the secret check, tesseract and `pip install`.
+#: That overhead is real and it varies -- measured at 96-446s across the runs
+#: of 2026-11-17 to 2026-11-23 (the pip-cache restore alone took 6m21s on
+#: 2026-11-23, a slow stretch for the self-hosted runner's network pulling an
+#: 808MB cache). On 2026-11-23 (run 45217500485) that left only 1354s of the
+#: 1800s job for a step whose own deadline was 1500s: the workflow's kill
+#: fired at 1367s in, 133s before this script would have stopped itself, and
+#: the run lost everything -- the exact failure this constant exists to
+#: prevent. 1140s clears the worst setup overhead observed (446s) plus the
+#: 60s clean-stop tail with room to spare, and still comfortably covers a
+#: full crawl (6-14min observed).
+#:
 #: Clamped rather than a bare env read, so an operator raising
 #: HI_DEADLINE_SECONDS cannot push it past the kill;
 #: tests/test_deadline_below_workflow_timeout.py reads this ceiling straight
 #: out of the AST and fails if it ever stops clearing the runner's kill by the
 #: 60s a clean stop needs.
-DEADLINE_SECONDS = max(60, min(1500, int(os.environ.get("HI_DEADLINE_SECONDS") or "1500")))
+DEADLINE_SECONDS = max(60, min(1140, int(os.environ.get("HI_DEADLINE_SECONDS") or "1140")))
 
 
 def main():
