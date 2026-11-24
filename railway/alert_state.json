@@ -132,6 +132,11 @@
       "last": 1795379304,
       "subject": "CI RED: Live surface check \u2014 AssertionError: Tyson Amarillo counts once (WARN filed twice): live API returned HTTP 500 \u2014 server regression, not a blip"
     },
+    "live-surface-check:live.data:a776cc402ee88703": {
+      "first": 1795530661,
+      "last": 1795530661,
+      "subject": "CI RED: Live surface check \u2014 AssertionError: No single row carries a headline: Worldwide, trailing 90 days: could not reach the live site (blog read already attempted in this hour;"
+    },
     "live-surface-check:live.data:c013f474c38560e8": {
       "first": 1795357663,
       "last": 1795357663,
@@ -183,6 +188,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-24T14:29:05+00:00",
+  "updated_at": "2026-11-24T14:31:01+00:00",
   "version": 1
 }
