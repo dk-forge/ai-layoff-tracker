@@ -2,13 +2,13 @@
 /**
  * Plugin Name: AI Layoff Tracker
  * Description: Tracks verified AI-related and general layoffs from SEC filings and credible news sources.
- * Version:           2.20.363
+ * Version:           2.20.364
  * Author: AskTheRecruiter
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALT_VERSION', '2.20.363');
+define('ALT_VERSION', '2.20.364');
 define('ALT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ALT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -378,6 +378,7 @@ if (!function_exists('alt_state_warn_urls')) {
 function alt_dataset_jsonld() {
     $now = gmdate('Y-m-d');
     $org = array('@type' => 'Organization', 'name' => 'AskTheRecruiter', 'url' => home_url('/'));
+    $publisher = array('@type' => 'Organization', 'name' => 'Ask The Recruiter Research', 'url' => home_url('/'));
     // dateModified is the last real data write, never the render time
     // (2026-11-18: every page carried the build clock). No write recorded,
     // no date claimed: alt_data_date_modified() returns null and the key drops.
@@ -389,7 +390,9 @@ function alt_dataset_jsonld() {
         'url' => home_url('/ai-layoff-tracker/'),
         'keywords' => array('layoffs', 'AI layoffs', 'job cuts', 'tech layoffs', 'WARN notices', 'workforce reduction', 'AI job losses', 'layoff tracker', '2026 layoffs'),
         'license' => 'https://creativecommons.org/licenses/by/4.0/', 'isAccessibleForFree' => true,
-        'creator' => $org, 'publisher' => $org,
+        'creator' => $org, 'publisher' => $publisher,
+        'isBasedOn' => array('@type' => 'WebPage', 'name' => 'AI Layoff Tracker sources',
+                            'url' => home_url('/ai-layoff-tracker/sources/')),
         'temporalCoverage' => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/' . $now,
         'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
         'variableMeasured' => array(
@@ -2048,9 +2051,11 @@ function alt_seo_head() {
         ),
         'publisher'           => array(
             '@type' => 'Organization',
-            'name'  => 'AskTheRecruiter',
+            'name'  => 'Ask The Recruiter Research',
             'url'   => home_url('/'),
         ),
+        'isBasedOn'           => array('@type' => 'WebPage', 'name' => 'AI Layoff Tracker sources',
+                                      'url' => home_url('/ai-layoff-tracker/sources/')),
         'distribution'        => array(
             array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv',         'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
             array('@type' => 'DataDownload', 'encodingFormat' => 'application/json', 'contentUrl' => admin_url('admin-post.php?action=alt_export_json')),
