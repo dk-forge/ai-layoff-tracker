@@ -7,6 +7,9 @@ from pathlib import Path
 from contextlib import redirect_stdout
 from io import StringIO
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from railway import dmarc_report as report
 
 
