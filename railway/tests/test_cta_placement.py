@@ -16,7 +16,7 @@ function alt_resume_cta_base() { return 'https://asktherecruiter.com'; }
 function add_query_arg($args, $url) { return $url . '?' . http_build_query($args); }
 """
         code = stubs + "require " + json.dumps(str(PLUGIN / "includes/atr-signup-cta.php")) + ";"
-        code += "echo json_encode(array(alt_atr_cta_url('tracker_home', 'inline'), alt_atr_cta_url('sticky_bar', 'sticky'), alt_atr_cta_url('tracker_home_fold', 'hero'), alt_atr_cta_url('widget', 'widget')));"
+        code += "echo json_encode(array(alt_atr_cta_url('tracker_home', 'inline'), alt_atr_cta_url('sticky_bar'), alt_atr_cta_url('tracker_home_fold'), alt_atr_cta_url('widget')));"
         result = subprocess.run(["php", "-r", code], capture_output=True, text=True, check=True)
         for url, campaign, placement in zip(json.loads(result.stdout), ["tracker_home", "sticky_bar", "tracker_home_fold", "widget"], ["inline", "sticky", "hero", "widget"]):
             parsed = urlparse(url)
@@ -28,6 +28,6 @@ function add_query_arg($args, $url) { return $url . '?' . http_build_query($args
         hero = (PLUGIN / "templates/page-tracker.php").read_text()
         widget = (PLUGIN / "templates/page-widget.php").read_text()
         self.assertIn("alt_atr_cta_url($campaign, 'inline')", helper)
-        self.assertIn("alt_atr_cta_url('sticky_bar', 'sticky')", helper)
-        self.assertIn("alt_atr_cta_url('tracker_home_fold', 'hero')", hero)
-        self.assertIn("alt_atr_cta_url('widget', 'widget')", widget)
+        self.assertIn("alt_atr_cta_url('sticky_bar')", helper)
+        self.assertIn("alt_atr_cta_url('tracker_home_fold')", hero)
+        self.assertIn("alt_atr_cta_url('widget')", widget)
