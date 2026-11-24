@@ -1,3 +1,33 @@
+## 2026-11-23 - Related-post title wrapping override (2.20.361, prepared)
+
+For todo#2784, a scoped `body.single-post .wp-block-post-template
+h3.wp-block-post-title` rule gives related-post titles balanced wrapping even
+when a more-specific theme rule defeats the existing generic title rule. Only
+`text-wrap` changes. No WordPress admin setting was changed.
+
+**Test first:** the offline Chromium cascade fixture reported `wrap` instead
+of `balance` at both 390px and 1280px before the rule was added. All three tests
+now pass, including the theme-only and non-article controls. The fixture models
+the cascade; it is not a capture of the current production stylesheet. Live
+verification remains unavailable under this environment's host policy. No
+merge or deployment is claimed.
+
+Full local suite is not green: managed Chrome blocks existing `data:` fixture
+URLs, and the offline-suite positive control records the enforced proxy. The
+browser failure also reproduces on unmodified main. No assertion was changed
+to hide either failure. A review branch does not establish green CI or a live
+fix.
+
+A full-suite check also exposed an existing widget-fixture race: the test
+measured a link as soon as its node existed, before its external stylesheet
+finished loading. A controlled delayed-stylesheet run reproduced the 17px
+measurement on unchanged main. The fixture now waits for document completion;
+the 44px and no-clipping assertions and the five-second deadline are unchanged.
+The delayed stylesheet remains in the fixture as the regression case.
+
+**Guard:** `railway/tests/test_blog_related_titles.py`.
+**Class:** wrong-scope-or-key.
+
 ## 2026-11-23 - Weekly benchmark: layoff 18/25; prefilter keeps "cutting N others" and "voluntary departures"
 
 **What.** `docs/benchmarks/2026-11-23.md`, scored live on 2026-11-23 (deferred from 11-22 by the host outage). Strict recall 18/25 (last week 19/25, different list). Seven misses: 4 no row (Dutch government, Olympus, NatWest, Renault; all non-US), 3 wrong count (Volvo Cars, Ecco, Children's Place). Median time to listing 3 days. No ranking is claimed; no competitor was run. For Renault (2026-11-17) three of the real Google News headlines, "cutting 1,000 others" and "1,000 voluntary departures", named no workforce noun and the free title prefilter dropped them; `HEADCOUNT_PATTERN` now keeps them. Other Renault and NatWest headlines already passed the prefilter and still made no row, so the downstream cause is open. No spend, no backfill, no plugin change, no deploy.

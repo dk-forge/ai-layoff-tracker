@@ -23,6 +23,8 @@ class EmbeddedWidget(unittest.TestCase):
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
+                if self.path.startswith('/assets/widget.css'):
+                    time.sleep(0.25)  # Exercise the iframe before its stylesheet arrives.
                 content = widget.encode() if self.path.startswith('/widget?') else (
                     css if self.path.startswith('/assets/widget.css') else (
                         b'' if self.path.startswith('/assets/') else parent.encode()))
@@ -53,7 +55,9 @@ class EmbeddedWidget(unittest.TestCase):
                 bounds = None
                 while time.monotonic() < deadline:
                     bounds = browser.eval_js('''(() => {
-const frame=document.querySelector('iframe'), link=frame.contentDocument?.querySelector('.alt-widget-cta');
+const frame=document.querySelector('iframe'), doc=frame?.contentDocument;
+if(!doc || doc.readyState!=='complete')return null;
+const link=doc.querySelector('.alt-widget-cta');
 if(!link)return null;
 const box=link.getBoundingClientRect();
 return {bottom:box.bottom, height:box.height, frameHeight:frame.clientHeight};
