@@ -97,11 +97,6 @@
       "last": 1790722672,
       "subject": "CI RED: FTPS target probe \u2014 TLS: FAILED verification (or login failed); do NOT merge the verify-on deploy change"
     },
-    "hawaii-warn-ocr-import:main:12d4ed5b708795b1": {
-      "first": 1795366053,
-      "last": 1795366053,
-      "subject": "CI RED: Hawaii WARN OCR import \u2014 source-health report failed for warn_hi_ocr (non-fatal): HTTPSConnectionPool(host='asktherecruiter.com', port=443): Read timed out. (read timeout=2"
-    },
     "hawaii-warn-ocr-import:main:d8e39d53df62398e": {
       "first": 1795454365,
       "last": 1795454365,
@@ -188,6 +183,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-24T14:31:01+00:00",
+  "updated_at": "2026-11-24T16:42:14+00:00",
   "version": 1
 }
