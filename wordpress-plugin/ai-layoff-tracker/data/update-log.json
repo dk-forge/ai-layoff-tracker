@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "digest-archive-match-cta",
+   "date": "2026-11-24",
+   "version": "2.20.365",
+   "type": "Fix",
+   "area": "growth",
+   "text": "The digest index and dated editions now place a tracked free match check near the top. Each page identifies its campaign and includes standalone styling for the link. The existing email sign-up line remains at the bottom."
+  },
+  {
    "slug": "email-footer-postal-address",
    "date": "2026-11-24",
    "version": "2.20.363",

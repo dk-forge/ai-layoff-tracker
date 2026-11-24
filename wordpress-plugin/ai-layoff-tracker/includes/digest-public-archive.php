@@ -324,6 +324,8 @@ function alt_digest_pub_css() {
         . '.wm{font-variant:small-caps;letter-spacing:.08em;font-size:12px;font-weight:600;color:#4b5563;margin:0}'
         . '.muted{color:#4b5563;font-size:14px}'
         . 'a{color:#1d4ed8}'
+        . '.alt-atr-cta{margin:1rem 0;padding:.7rem .9rem;border:1px solid rgba(127,127,127,.4);border-radius:8px;line-height:1.5}'
+        . '.alt-atr-cta a{font-weight:600;text-decoration:underline;display:inline-block;min-height:24px}'
         . 'ul.list{list-style:none;padding:0;margin:0}ul.list li{padding:10px 0;border-top:1px solid #e5e7eb}'
         . 'ul.list li:first-child{border-top:0}'
         . 'form.f{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:0 0 16px}'
@@ -374,6 +376,10 @@ function alt_digest_pub_email_dark_css() {
         . '}';
 }
 
+function alt_digest_pub_cta_html($campaign) {
+    return function_exists('alt_atr_cta_line_html') ? alt_atr_cta_line_html($campaign) : '';
+}
+
 function alt_digest_pub_signup_line() {
     return '<p class="muted">Get the digest by email, free: <a href="'
         . esc_url(home_url('/ai-layoff-tracker/#alt-digest')) . '">sign up on the tracker</a>.</p>';
@@ -396,6 +402,7 @@ function alt_digest_pub_render_page($row) {
     echo '<p class="wm">AskTheRecruiter</p><h1>' . esc_html($row['subject']) . '</h1>'
         . '<p class="muted">' . esc_html(ucfirst($row['kind'])) . ' edition, sent '
         . esc_html($date) . '. This is the public copy of the email.</p>';
+    echo alt_digest_pub_cta_html('digest_edition');
     $ref = alt_digest_pub_edition_ref($row);
     if ($ref && function_exists('alt_edition_get')) {
         $ed = alt_edition_get($ref[0], $ref[1]);
@@ -431,6 +438,7 @@ function alt_digest_pub_render_hub() {
         $hub, $filtered ? 'noindex,follow' : 'index,follow', $jsonld);
     echo '<p class="wm">AskTheRecruiter</p><h1>Digest archive</h1>'
         . '<p class="muted">Every edition of the AI Layoff Tracker email, newest first.</p>'
+        . alt_digest_pub_cta_html('digest_hub')
         . '<form class="f" method="get" action="' . esc_url($hub) . '">'
         . '<label>From<input type="date" name="from" value="' . esc_attr($from) . '"></label>'
         . '<label>To<input type="date" name="to" value="' . esc_attr($to) . '"></label>'
