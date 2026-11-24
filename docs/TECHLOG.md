@@ -1,3 +1,15 @@
+## 2026-11-23 - Public endpoint budgets, review only
+
+Added shared per-peer and WordPress-user limits before public REST callbacks and
+anonymous download/form actions. A named-lock-protected option counter survives
+response-cache flushes and stores only salted identifiers plus expiry/count.
+Failures stop work; the shared quota returns 429 with a retry hint. Existing tighter
+limits and signed consent withdrawal remain unchanged. No deployment, data edits,
+email sends or host configuration changes were performed.
+
+**Class:** absent-read-as-ok
+**Guard:** railway/tests/test_public_rate_limits.py; docs/PUBLIC_ENDPOINT_LIMITS.md.
+
 ## 2026-11-23 - Related-post title wrapping override (2.20.361, prepared)
 
 For todo#2784, a scoped `body.single-post .wp-block-post-template
