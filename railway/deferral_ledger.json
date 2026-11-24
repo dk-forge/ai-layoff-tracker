@@ -2,56 +2,6 @@
   "entries": [
     {
       "consecutive": 1,
-      "first_deferred_at": "2026-11-23T03:46:14+00:00",
-      "job": "enrich-context",
-      "last_deferred_at": "2026-11-23T03:46:14+00:00",
-      "last_key": "45107490613:1",
-      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
-      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45107490613",
-      "state": "pending"
-    },
-    {
-      "consecutive": 1,
-      "first_deferred_at": "2026-11-23T04:32:04+00:00",
-      "job": "enrich-roles",
-      "last_deferred_at": "2026-11-23T04:32:04+00:00",
-      "last_key": "45112345410:1",
-      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
-      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45112345410",
-      "state": "pending"
-    },
-    {
-      "consecutive": 1,
-      "first_deferred_at": "2026-11-23T04:44:48+00:00",
-      "job": "reason-backfill",
-      "last_deferred_at": "2026-11-23T04:44:48+00:00",
-      "last_key": "45113584187:1",
-      "last_reason": "the source-health ledger would not accept the 'running' note for reason_backfill; nothing was attempted",
-      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45113584187",
-      "state": "pending"
-    },
-    {
-      "consecutive": 1,
-      "first_deferred_at": "2026-11-23T04:56:59+00:00",
-      "job": "industry-backfill",
-      "last_deferred_at": "2026-11-23T04:56:59+00:00",
-      "last_key": "45114727568:1",
-      "last_reason": "the source-health ledger would not accept the 'running' note for industry_backfill; nothing was attempted",
-      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45114727568",
-      "state": "pending"
-    },
-    {
-      "consecutive": 1,
-      "first_deferred_at": "2026-11-23T05:41:55+00:00",
-      "job": "archive-backfill",
-      "last_deferred_at": "2026-11-23T05:41:55+00:00",
-      "last_key": "45118093516:1",
-      "last_reason": "the source-health ledger would not accept the 'running' note for archive_backfill; nothing was attempted",
-      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45118093516",
-      "state": "pending"
-    },
-    {
-      "consecutive": 1,
       "first_deferred_at": "2026-08-13T23:59:11+00:00",
       "job": "archive-backfill",
       "last_deferred_at": "2026-08-13T23:59:11+00:00",
@@ -269,8 +219,63 @@
       "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45045395701",
       "resolved_at": "2026-11-23T17:27:03+00:00",
       "state": "resolved"
+    },
+    {
+      "consecutive": 1,
+      "first_deferred_at": "2026-11-23T03:46:14+00:00",
+      "job": "enrich-context",
+      "last_deferred_at": "2026-11-23T03:46:14+00:00",
+      "last_key": "45107490613:1",
+      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45107490613",
+      "resolved_at": "2026-11-24T03:49:57+00:00",
+      "state": "resolved"
+    },
+    {
+      "consecutive": 1,
+      "first_deferred_at": "2026-11-23T04:32:04+00:00",
+      "job": "enrich-roles",
+      "last_deferred_at": "2026-11-23T04:32:04+00:00",
+      "last_key": "45112345410:1",
+      "last_reason": "GET https://asktherecruiter.com/blog/wp-json/layoffs/v1/query never got an answer from the host",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45112345410",
+      "resolved_at": "2026-11-24T04:29:53+00:00",
+      "state": "resolved"
+    },
+    {
+      "consecutive": 1,
+      "first_deferred_at": "2026-11-23T04:44:48+00:00",
+      "job": "reason-backfill",
+      "last_deferred_at": "2026-11-23T04:44:48+00:00",
+      "last_key": "45113584187:1",
+      "last_reason": "the source-health ledger would not accept the 'running' note for reason_backfill; nothing was attempted",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45113584187",
+      "resolved_at": "2026-11-24T04:45:37+00:00",
+      "state": "resolved"
+    },
+    {
+      "consecutive": 1,
+      "first_deferred_at": "2026-11-23T04:56:59+00:00",
+      "job": "industry-backfill",
+      "last_deferred_at": "2026-11-23T04:56:59+00:00",
+      "last_key": "45114727568:1",
+      "last_reason": "the source-health ledger would not accept the 'running' note for industry_backfill; nothing was attempted",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45114727568",
+      "resolved_at": "2026-11-24T04:59:47+00:00",
+      "state": "resolved"
+    },
+    {
+      "consecutive": 1,
+      "first_deferred_at": "2026-11-23T05:41:55+00:00",
+      "job": "archive-backfill",
+      "last_deferred_at": "2026-11-23T05:41:55+00:00",
+      "last_key": "45118093516:1",
+      "last_reason": "the source-health ledger would not accept the 'running' note for archive_backfill; nothing was attempted",
+      "last_run_url": "https://github.com/dk-forge/ai-layoff-tracker/actions/runs/45118093516",
+      "resolved_at": "2026-11-24T06:09:14+00:00",
+      "state": "resolved"
     }
   ],
-  "updated_at": "2026-11-23T17:27:03+00:00",
+  "updated_at": "2026-11-24T06:09:14+00:00",
   "version": 1
 }

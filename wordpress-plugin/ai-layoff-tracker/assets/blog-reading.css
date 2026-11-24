@@ -598,6 +598,10 @@ body.single-post .wp-block-post-content h3 {
   text-wrap: balance;
 }
 
+body.single-post .wp-block-post-template h3.wp-block-post-title {
+  text-wrap: balance;
+}
+
 body.single-post .entry-content h4,
 body.single-post .wp-block-post-content h4 {
   font-family: var(--alt-read-sans) !important;

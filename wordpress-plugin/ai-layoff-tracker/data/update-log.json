@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "blog-related-title-balance",
+   "date": "2026-11-23",
+   "version": "2.20.361",
+   "type": "Fix",
+   "area": "accessibility",
+   "text": "Related-post titles use balanced wrapping on individual blog articles. The override is scoped to the WordPress post-template titles. Theme wrapping on other page types is retained. Local fixture checks do not verify live pages."
+  },
+  {
    "slug": "talent-email-2847",
    "date": "2026-11-22",
    "version": "2.20.358",

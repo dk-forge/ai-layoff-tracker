@@ -162,11 +162,6 @@
       "last": 1789615249,
       "subject": "CI RED: New error watch \u2014 new_error_watch.py exited 3: Sentry could not be checked this run. That is UNKNOWN, not a pass."
     },
-    "page-weight-budget:main:3eb4d7f49ee7d7ab": {
-      "first": 1795411858,
-      "last": 1795411858,
-      "subject": "CI RED: Page weight budget \u2014 UNKNOWN https://asktherecruiter.com/blog/ai-layoff-tracker/: HTTPError: HTTP Error 500: Internal Server Error"
-    },
     "review-held-rows-two-referees:main:0502244882b4ec52": {
       "first": 1795418632,
       "last": 1795418632,
@@ -176,11 +171,6 @@
       "first": 1795245639,
       "last": 1795245639,
       "subject": "CI RED: Review held rows (two referees) \u2014 spend $0.0195; 1 row(s) left held"
-    },
-    "subscriber-watch:main:76147e63e99c3a52": {
-      "first": 1795390933,
-      "last": 1795390933,
-      "subject": "CI RED: Subscriber watch \u2014 Subscriber watch UNKNOWN: could not read the stats route (TimeoutError)."
     },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
@@ -203,6 +193,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-23T18:39:04+00:00",
+  "updated_at": "2026-11-24T05:28:10+00:00",
   "version": 1
 }
