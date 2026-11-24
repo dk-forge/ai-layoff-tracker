@@ -84,3 +84,4 @@ jobs:
             docs/recall-reference-sets/ai-causation-2026-08.goldset.json
             docs/recall-reference-sets/ai-causation-2026-08.review.md
           if-no-files-found: warn
+          retention-days: 7

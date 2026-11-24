@@ -75,3 +75,4 @@ jobs:
           path: |
             seo-404s.json
             seo-redirects.json
+          retention-days: 7

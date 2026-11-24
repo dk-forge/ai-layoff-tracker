@@ -128,3 +128,4 @@ jobs:
         with:
           name: audit-flags
           path: audit-flags.json
+          retention-days: 7

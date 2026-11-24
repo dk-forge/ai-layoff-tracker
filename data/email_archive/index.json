@@ -1,6 +1,16 @@
 {
   "editions": [
     {
+      "date": "2026-11-24",
+      "kind": "daily",
+      "path": "2026/11/2026-11-24-daily.html",
+      "sections": [
+        "talent"
+      ],
+      "slug": "2026-11-24-daily",
+      "subject": "\ud83d\ude80 Who's hiring: Dropbox, Lyell Immunopharma + 1 more \u00b7 Nov 24"
+    },
+    {
       "date": "2026-11-23",
       "kind": "daily",
       "path": "2026/11/2026-11-23-daily.html",

@@ -97,3 +97,4 @@ jobs:
           name: ab-extraction-models
           path: ${{ runner.temp }}/ab-extraction-models.json
           if-no-files-found: warn
+          retention-days: 7

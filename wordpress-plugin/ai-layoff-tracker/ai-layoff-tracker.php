@@ -58,6 +58,9 @@ if (is_readable($alt_declared_supersets)) {
     require_once $alt_declared_supersets;
 }
 require_once ALT_PLUGIN_DIR . 'includes/api.php';
+if (is_readable(ALT_PLUGIN_DIR . 'includes/public-rate-limits.php')) {
+    require_once ALT_PLUGIN_DIR . 'includes/public-rate-limits.php';
+}
 // "By location" table route (2.20.274). NEW file, GUARDED for the FTPS race:
 // the page's table simply stays empty until it lands.
 $alt_by_location = ALT_PLUGIN_DIR . 'includes/by-location.php';
@@ -375,6 +378,7 @@ if (!function_exists('alt_state_warn_urls')) {
 function alt_dataset_jsonld() {
     $now = gmdate('Y-m-d');
     $org = array('@type' => 'Organization', 'name' => 'AskTheRecruiter', 'url' => home_url('/'));
+    $publisher = array('@type' => 'Organization', 'name' => 'Ask The Recruiter Research', 'url' => home_url('/'));
     // dateModified is the last real data write, never the render time
     // (2026-11-18: every page carried the build clock). No write recorded,
     // no date claimed: alt_data_date_modified() returns null and the key drops.
@@ -386,7 +390,9 @@ function alt_dataset_jsonld() {
         'url' => home_url('/ai-layoff-tracker/'),
         'keywords' => array('layoffs', 'AI layoffs', 'job cuts', 'tech layoffs', 'WARN notices', 'workforce reduction', 'AI job losses', 'layoff tracker', '2026 layoffs'),
         'license' => 'https://creativecommons.org/licenses/by/4.0/', 'isAccessibleForFree' => true,
-        'creator' => $org, 'publisher' => $org,
+        'creator' => $org, 'publisher' => $publisher,
+        'isBasedOn' => array('@type' => 'WebPage', 'name' => 'AI Layoff Tracker sources',
+                            'url' => home_url('/ai-layoff-tracker/sources/')),
         'temporalCoverage' => (function_exists('alt_live_numbers') ? alt_live_numbers()['start'] : '2015') . '-01-01/' . $now,
         'measurementTechnique' => 'Primary-source verification: SEC EDGAR filings, official state WARN notices, EU restructuring records, and named news reports from an allowlist of reviewed outlets.',
         'variableMeasured' => array(
@@ -2045,9 +2051,11 @@ function alt_seo_head() {
         ),
         'publisher'           => array(
             '@type' => 'Organization',
-            'name'  => 'AskTheRecruiter',
+            'name'  => 'Ask The Recruiter Research',
             'url'   => home_url('/'),
         ),
+        'isBasedOn'           => array('@type' => 'WebPage', 'name' => 'AI Layoff Tracker sources',
+                                      'url' => home_url('/ai-layoff-tracker/sources/')),
         'distribution'        => array(
             array('@type' => 'DataDownload', 'encodingFormat' => 'text/csv',         'contentUrl' => admin_url('admin-post.php?action=alt_export_csv')),
             array('@type' => 'DataDownload', 'encodingFormat' => 'application/json', 'contentUrl' => admin_url('admin-post.php?action=alt_export_json')),
