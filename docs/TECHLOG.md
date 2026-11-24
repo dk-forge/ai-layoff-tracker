@@ -18,6 +18,13 @@ browser failure also reproduces on unmodified main. No assertion was changed
 to hide either failure. A review branch does not establish green CI or a live
 fix.
 
+A full-suite check also exposed an existing widget-fixture race: the test
+measured a link as soon as its node existed, before its external stylesheet
+finished loading. A controlled delayed-stylesheet run reproduced the 17px
+measurement on unchanged main. The fixture now waits for document completion;
+the 44px and no-clipping assertions and the five-second deadline are unchanged.
+The delayed stylesheet remains in the fixture as the regression case.
+
 **Guard:** `railway/tests/test_blog_related_titles.py`.
 **Class:** wrong-scope-or-key.
 
