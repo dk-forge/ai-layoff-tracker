@@ -136,6 +136,9 @@ EXEMPT = (
     # below reads the WHOLE rendered message, footer and edition note
     # included, which the section-level scans never did.
     re.compile(r"\bISO[\s‑-]?8601\b"),
+    # A POSTCODE IS AN ADDRESS, NOT A QUANTITY. The footer prints our business
+    # postal address (todo#490); only that exact postcode is exempt.
+    re.compile(r"\b1402 AT Bussum\b"),
 )
 
 # THE FIELDS A CLIENT CAN DISPLAY, named once so a new one cannot be added to

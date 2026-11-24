@@ -2,6 +2,14 @@
  "source": "docs/release-notes.d",
  "entries": [
   {
+   "slug": "email-footer-postal-address",
+   "date": "2026-11-24",
+   "version": "2.20.363",
+   "type": "Fix",
+   "area": "email",
+   "text": "Email footers now show our business postal address, Torenlaan 5, 1402 AT Bussum, Netherlands, instead of only \"Netherlands\". Every commercial email needs a real postal address under CAN-SPAM."
+  },
+  {
    "slug": "blog-related-title-balance",
    "date": "2026-11-23",
    "version": "2.20.361",
