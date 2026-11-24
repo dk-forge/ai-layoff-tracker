@@ -2,10 +2,7 @@
 
 CAN-SPAM 15 U.S.C. 7704(a)(5) needs a valid physical postal address in every
 commercial email. This fails when the value is empty or has no street or PO
-box line, with ONE exception while the owner has not supplied the address:
-the config names the open owner item (asktherecruiter-sandbox
-docs/program_board/owner_items.json), so the gap is tracked, not hidden. Once
-'street' is filled the exception closes by itself.
+box line, and pins the owner-approved address (DECISIONS 2026-11-13).
 """
 import os
 import re
@@ -29,14 +26,19 @@ class PostalAddress(unittest.TestCase):
                      "123 Main Street"):
             self.assertTrue(pa.has_street_line(good), good)
 
-    def test_configured_address_has_a_street_or_is_a_tracked_owner_item(self):
+    def test_configured_address_is_the_business_postal_mailbox(self):
+        # DECISIONS 2026-11-13 (asktherecruiter-sandbox): Postadres Nederland
+        # mailbox, a public business address; not a home or visiting address.
         cfg = pa.config()
-        self.assertTrue(pa.postal_address(cfg).strip(" ."))
-        if pa.has_street_line(cfg.get("street") or ""):
-            return
-        self.assertEqual(cfg.get("pending_owner_item"),
-                         "Provide the postal address for email footers",
-                         "No street or PO box line and no owner item tracking it.")
+        self.assertTrue(pa.has_street_line(cfg.get("street") or ""))
+        self.assertEqual(cfg["street"], "Torenlaan 5")
+        self.assertEqual(pa.postal_address(cfg),
+                         "Ask The Recruiter, Torenlaan 5, 1402 AT Bussum, Netherlands.")
+
+    def test_no_pending_owner_item_is_left_in_the_config(self):
+        cfg = pa.config()
+        self.assertNotIn("pending_owner_item", cfg)
+        self.assertNotIn("pending", cfg.get("_why", "").lower())
 
     def test_no_footer_hard_codes_the_address(self):
         hits = []
