@@ -8,11 +8,14 @@ that, and both are tested here: the Python cleaner and record check
 Offline: PHP runs locally with WordPress stubbed; nothing touches the site.
 """
 import json
+import html
 import os
+import re
 import shutil
 import subprocess
 import sys
 import unittest
+import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -145,6 +148,72 @@ class PluginGate(unittest.TestCase):
         charts = self.record["charts"] + [{"n": 3, "alt": "x", "png": "R0lGODlh"}]
         got = php("array_keys(alt_digest_pub_decode_charts($in))", charts)
         self.assertEqual(got, [c["n"] for c in self.record["charts"]])
+
+
+@unittest.skipUnless(shutil.which("php"), "no php binary: UNKNOWN, NOT RUN")
+class ArchiveMatchCheck(unittest.TestCase):
+    def cta_html(self, campaign):
+        cta_file = PHP_FILE.with_name("atr-signup-cta.php")
+        stubs = (
+            "function esc_url($s){return htmlspecialchars($s,ENT_QUOTES); }"
+            "function esc_html($s){return htmlspecialchars($s,ENT_QUOTES); }"
+            "function esc_attr($s){return htmlspecialchars($s,ENT_QUOTES); }"
+            "function add_query_arg($a,$u){return $u.(strpos($u,'?')===false?'?':'&').http_build_query($a); }"
+            "function alt_resume_cta_base(){return 'https://asktherecruiter.com'; }"
+        )
+        code = (STUBS + stubs + f"require {json.dumps(str(cta_file))};"
+                + f"require {json.dumps(str(PHP_FILE))};"
+                + f"echo alt_digest_pub_cta_html({json.dumps(campaign)});")
+        return subprocess.run(["php", "-r", code], capture_output=True,
+                              text=True, check=True, timeout=60).stdout
+
+    def test_hub_and_edition_have_one_tracked_match_check(self):
+        for campaign in ("digest_hub", "digest_edition"):
+            with self.subTest(campaign=campaign):
+                markup = self.cta_html(campaign)
+                hrefs = re.findall(r'href="([^"]+)"', markup)
+                self.assertEqual(len(hrefs), 1)
+                url = urllib.parse.urlsplit(html.unescape(hrefs[0]))
+                self.assertEqual(url.netloc, "asktherecruiter.com")
+                self.assertEqual(url.path, "/resume-score")
+                self.assertEqual(dict(urllib.parse.parse_qsl(url.query)), {
+                    "utm_source": "ai-layoff-tracker", "utm_medium": "referral",
+                    "utm_campaign": campaign,
+                })
+                rel = re.search(r'<a\b[^>]*\brel="([^"]+)"', markup).group(1)
+                self.assertIn("nofollow", rel.split())
+                self.assertIn("Check my resume", html.unescape(re.sub(r"<[^>]+>", "", markup)))
+
+    def test_helper_is_optional_during_partial_upload(self):
+        self.assertEqual(php("alt_digest_pub_cta_html('x')"), "")
+
+    def test_call_sites_precede_filters_and_edition_body(self):
+        source = PHP_FILE.read_text(encoding="utf-8")
+        hub = source.split("function alt_digest_pub_render_hub()", 1)[1].split("\n}", 1)[0]
+        page = source.split("function alt_digest_pub_render_page($row)", 1)[1].split("\n}", 1)[0]
+        hub_call = "alt_digest_pub_cta_html('digest_hub')"
+        page_call = "alt_digest_pub_cta_html('digest_edition')"
+        self.assertEqual(hub.count(hub_call), 1)
+        self.assertLess(hub.index("newest first.</p>"), hub.index(hub_call))
+        self.assertLess(hub.index(hub_call), hub.index('<form class="f"'))
+        self.assertEqual(page.count(page_call), 1)
+        self.assertLess(page.index("This is the public copy of the email.</p>"), page.index(page_call))
+        self.assertLess(page.index(page_call), page.index("alt_digest_pub_edition_ref("))
+        self.assertLess(page.index(page_call), page.index("alt_digest_pub_body("))
+        self.assertIn("alt_digest_pub_signup_line()", hub)
+        self.assertIn("alt_digest_pub_signup_line()", page)
+
+    def test_standalone_styles_keep_the_line_visible_and_link_sized(self):
+        css = php("alt_digest_pub_css()")
+        self.assertIn(".alt-atr-cta{margin:1rem 0;padding:.7rem .9rem;", css)
+        self.assertIn("border:1px solid rgba(127,127,127,.4);border-radius:8px;line-height:1.5", css)
+        self.assertIn(".alt-atr-cta a{font-weight:600;text-decoration:underline;display:inline-block;min-height:24px}", css)
+
+    def test_match_check_copy_guard(self):
+        for campaign in ("digest_hub", "digest_edition"):
+            text = html.unescape(re.sub(r"<[^>]+>", "", self.cta_html(campaign))).lower()
+            for forbidden in ("\u2014", "honest", "blind", "!", "r\u00e9sum\u00e9"):
+                self.assertNotIn(forbidden, text)
 
 
 if __name__ == "__main__":
