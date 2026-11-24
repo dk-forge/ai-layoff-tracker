@@ -70,7 +70,7 @@ function alt_public_client_ip() {
     $all = array_merge($cloudflare, $internal);
     if (!alt_public_ip_in_ranges($peer, $all)) return $peer;
     $cf = trim((string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''));
-    if ($cf !== '' && filter_var($cf, FILTER_VALIDATE_IP)) {
+    if ($cf !== '' && alt_public_ip_in_ranges($peer, $cloudflare) && filter_var($cf, FILTER_VALIDATE_IP)) {
         $cf = inet_ntop(inet_pton($cf));
         if (!alt_public_ip_in_ranges($cf, $all)) return $cf;
     }
