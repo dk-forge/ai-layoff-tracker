@@ -877,6 +877,16 @@ function alt_briefing_render($m, $send_id = 0) {
     list($bh, $bt) = alt_briefing_biggest($m, $send_id);
     $html .= $bh;
     $text .= $bt;
+    // The layoff-to-resume line (todo#2983), daily and weekly only, naming the
+    // employer at the top of "Biggest cuts" so the line and the list agree.
+    if (in_array($kind, array('daily', 'weekly'), true) && function_exists('alt_layoff_resume_email_parts')) {
+        $lead_rows = (array) $m['rows'];
+        $lead_name = $lead_rows ? (string) ($lead_rows[0]['company_name'] ?? '') : '';
+        if (function_exists('alt_digest_clean_employer')) $lead_name = alt_digest_clean_employer($lead_name);
+        list($rh, $rt) = alt_layoff_resume_email_parts($lead_name);
+        $html .= $rh;
+        $text .= $rt;
+    }
     if ($kind === 'daily' && $m['wtd'] !== null) {
         $w = 'This week so far (' . alt_digest_short_range(alt_briefing_monday($to), $to) . '): '
            . alt_digest_number($m['wtd']) . ' verified job cuts.';

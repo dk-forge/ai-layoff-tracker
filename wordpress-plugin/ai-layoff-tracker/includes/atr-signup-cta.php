@@ -39,6 +39,62 @@ function alt_atr_cta_line_html($campaign, $company = '') {
 }
 
 /**
+ * GROWTH EXPERIMENT 1, THE LAYOFF-TO-RESUME LOOP (todo#2983, 2026-11-24).
+ *
+ * One line, naming the employer, on every company page and in the daily and
+ * weekly digest emails. The link text is the action itself, so a screen
+ * reader listing links hears where it goes. Every link carries the same five
+ * tags; only utm_medium (where it was shown) and utm_content (which employer)
+ * vary, so the experiment reads as one campaign in the weekly report.
+ * tests/test_layoff_resume_loop.py pins the copy and the tags.
+ */
+function alt_layoff_resume_slug($company, $slug = '') {
+    $s = strtolower(trim((string) ($slug !== '' ? $slug : $company)));
+    $s = trim(preg_replace('/[^a-z0-9]+/', '-', $s), '-');
+    return substr($s, 0, 64);
+}
+
+function alt_layoff_resume_url($company, $medium, $slug = '') {
+    $medium = in_array($medium, array('company-page', 'digest-email'), true) ? $medium : 'company-page';
+    $content = alt_layoff_resume_slug($company, $slug);
+    return add_query_arg(array(
+        'utm_source'   => 'ai-layoff-tracker',
+        'utm_medium'   => $medium,
+        'utm_campaign' => 'layoff-resume-loop',
+        'utm_content'  => $content !== '' ? $content : 'unknown',
+    ), rtrim(alt_resume_cta_base(), '/') . '/resume-score');
+}
+
+/** The lead sentence and the link text, kept apart so HTML and text share them. */
+function alt_layoff_resume_copy($company) {
+    $company = trim((string) $company);
+    return array(
+        $company !== '' ? 'Laid off from ' . $company . '?' : 'Laid off?',
+        'Check your resume against open jobs, free.',
+    );
+}
+
+/** On a company page: the same box as the other sign-up lines. */
+function alt_layoff_resume_line_html($company, $slug = '') {
+    list($lead, $link) = alt_layoff_resume_copy($company);
+    return '<p class="alt-atr-cta alt-layoff-resume" data-alt="layoff-resume">'
+        . '<b>' . esc_html($lead) . '</b> '
+        . '<a href="' . esc_url(alt_layoff_resume_url($company, 'company-page', $slug)) . '" target="_blank" rel="noopener nofollow">'
+        . esc_html($link) . '</a></p>';
+}
+
+/** In a digest: array(html, text). No target or rel: mail clients open links in a browser anyway. */
+function alt_layoff_resume_email_parts($company) {
+    list($lead, $link) = alt_layoff_resume_copy($company);
+    $url = alt_layoff_resume_url($company, 'digest-email');
+    return array(
+        '<p data-alt="layoff-resume"><b>' . esc_html($lead) . '</b> '
+            . '<a href="' . esc_url($url) . '">' . esc_html($link) . '</a></p>',
+        "\n" . $lead . ' ' . $link . "\n  " . $url . "\n",
+    );
+}
+
+/**
  * The same line for a country, state or industry page (todo#1881 item 1): the
  * lead names the place or sector the reader came for, the destination and
  * the promise stay the same, and the facet rides in utm_content.

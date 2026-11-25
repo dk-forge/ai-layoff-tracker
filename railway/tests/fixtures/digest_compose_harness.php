@@ -408,6 +408,14 @@ if (is_file($alt_extras)) require_once $alt_extras;
 // And digest-sections.php, which the plugin also loads (alt_digest_top_n).
 $alt_sections = dirname($argv[1]) . '/digest-sections.php';
 if (is_file($alt_sections)) require_once $alt_sections;
+// And atr-signup-cta.php, which the plugin loads from the main file: the
+// briefing's layoff-to-resume line (todo#2983) is built there. The base URL
+// lives in the main file, so its default is stubbed here.
+if (!function_exists('alt_resume_cta_base')) {
+    function alt_resume_cta_base() { return 'https://asktherecruiter.com'; }
+}
+$alt_atr_cta = dirname($argv[1]) . '/atr-signup-cta.php';
+if (is_file($alt_atr_cta)) require_once $alt_atr_cta;
 
 /*
   PROBE MODE. The window, validation, period and last-sent-column helpers are

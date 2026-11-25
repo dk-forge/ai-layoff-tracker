@@ -178,9 +178,11 @@ class Placement(unittest.TestCase):
 
     def test_company_page_carries_it_with_the_name(self):
         src = COMPANY.read_text(encoding="utf-8")
-        self.assertIn("alt_atr_cta_line_html('company_entry', $alt_label)", src)
+        # Since todo#2983 the company page carries the layoff-to-resume line
+        # instead (tests/test_layoff_resume_loop.py pins its copy and tags).
+        self.assertIn("alt_layoff_resume_line_html($alt_label", src)
         self.assertLess(src.index("alt-company-summary"),
-                        src.index("alt_atr_cta_line_html('company_entry'"))
+                        src.index("alt_layoff_resume_line_html("))
 
     def test_main_tracker_page_carries_it_after_the_hero(self):
         # CLAUDE.md conversion rule (owner 2026-11-17): the flagship page, the
@@ -197,7 +199,8 @@ class Placement(unittest.TestCase):
         self.assertIn("function_exists('alt_atr_cta_enqueue')", sc)
 
     def test_calls_are_ftp_race_guarded(self):
-        for path in (INDEX, COMPANY, TRACKER):
+        # COMPANY carries the layoff-to-resume line instead (test_layoff_resume_loop.py).
+        for path in (INDEX, TRACKER):
             self.assertIn("function_exists('alt_atr_cta_line_html')",
                           path.read_text(encoding="utf-8"), path.name)
 
