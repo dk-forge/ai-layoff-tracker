@@ -2,157 +2,6 @@
  "entries": [
   {
    "attempt": "1",
-   "cached_prompt_tokens": 12210,
-   "calls": 336,
-   "ceiling_usd": 0.15,
-   "changed": null,
-   "complete": true,
-   "completion_tokens": 77341,
-   "cost_usd": 0.10829,
-   "date": "2026-09-25",
-   "items": 336,
-   "job": "edgar-history-sweep",
-   "max_call_usd": 0.000546,
-   "prompt_tokens": 784522,
-   "run_id": "36098782280",
-   "stored": 0,
-   "truncated": null
-  },
-  {
-   "attempt": "1",
-   "calls": 40,
-   "ceiling_usd": 0.01,
-   "changed": 1,
-   "complete": true,
-   "completion_tokens": 577,
-   "cost_usd": 0.001721,
-   "date": "2026-09-25",
-   "items": 40,
-   "job": "enrich-roles",
-   "max_call_usd": 5.2e-05,
-   "prompt_tokens": 14900,
-   "run_id": "36095110001",
-   "stored": null,
-   "truncated": null
-  },
-  {
-   "attempt": "1",
-   "calls": 330,
-   "ceiling_usd": 0.025,
-   "changed": 111,
-   "complete": true,
-   "completion_tokens": 3821,
-   "cost_usd": 0.011297,
-   "date": "2026-09-25",
-   "items": 200,
-   "job": "industry-backfill",
-   "max_call_usd": 4.1e-05,
-   "prompt_tokens": 97682,
-   "run_id": "36096477867",
-   "stored": null,
-   "truncated": null
-  },
-  {
-   "calls": 1634,
-   "ceiling_usd": 0.2,
-   "complete": true,
-   "completion_tokens": 89337,
-   "cost_usd": 0.148314,
-   "date": "2026-09-25",
-   "gate_mode": "live",
-   "items": 1255,
-   "job": "railway-cron",
-   "max_call_usd": 0.000533,
-   "prompt_tokens": 1125794,
-   "run_id": "railway-20260925T2222",
-   "sources": {
-    "edgar": {
-     "calls": 10,
-     "cost_usd": 0.001571,
-     "dropped": 2,
-     "items": 6,
-     "kept": 4,
-     "stored": 0
-    },
-    "gdelt": {
-     "calls": 908,
-     "cost_usd": 0.050515,
-     "dropped": 820,
-     "items": 864,
-     "kept": 44,
-     "stored": 7
-    },
-    "google_news": {
-     "calls": 248,
-     "cost_usd": 0.032698,
-     "dropped": 20,
-     "items": 134,
-     "kept": 114,
-     "stored": 0
-    },
-    "local_news": {
-     "calls": 460,
-     "cost_usd": 0.061953,
-     "dropped": 34,
-     "items": 247,
-     "kept": 213,
-     "stored": 0
-    },
-    "national_feeds": {
-     "calls": 4,
-     "cost_usd": 0.000735,
-     "dropped": 0,
-     "items": 2,
-     "kept": 2,
-     "stored": 0
-    },
-    "warn_mn_letters": {
-     "calls": 4,
-     "cost_usd": 0.000841,
-     "dropped": 0,
-     "items": 2,
-     "kept": 2,
-     "stored": 0
-    }
-   },
-   "stored": 7
-  },
-  {
-   "attempt": "1",
-   "calls": 40,
-   "ceiling_usd": 0.005,
-   "changed": 0,
-   "complete": true,
-   "completion_tokens": 670,
-   "cost_usd": 0.002258,
-   "date": "2026-09-25",
-   "items": 40,
-   "job": "reason-backfill",
-   "max_call_usd": 6.7e-05,
-   "prompt_tokens": 19900,
-   "run_id": "36095989175",
-   "stored": null,
-   "truncated": null
-  },
-  {
-   "attempt": "1",
-   "calls": 0,
-   "ceiling_usd": 0.005,
-   "changed": 0,
-   "complete": true,
-   "completion_tokens": 0,
-   "cost_usd": 0.0,
-   "date": "2026-09-25",
-   "items": 3,
-   "job": "reclassify-legacy-ai",
-   "max_call_usd": 0.0,
-   "prompt_tokens": 0,
-   "run_id": "36090941477",
-   "stored": null,
-   "truncated": null
-  },
-  {
-   "attempt": "1",
    "cached_prompt_tokens": 14246,
    "calls": 279,
    "ceiling_usd": 0.15,
@@ -7975,6 +7824,72 @@
    "run_id": "45329758221",
    "stored": null,
    "truncated": null
+  },
+  {
+   "cached_prompt_tokens": 406926,
+   "calls": 1689,
+   "ceiling_usd": 0.2,
+   "complete": true,
+   "completion_tokens": 99629,
+   "cost_usd": 0.13406,
+   "date": "2026-11-24",
+   "gate_mode": "live",
+   "items": 1277,
+   "job": "railway-cron",
+   "max_call_usd": 0.001508,
+   "prompt_tokens": 1263210,
+   "run_id": "railway-20261124T2230",
+   "sources": {
+    "edgar": {
+     "calls": 43,
+     "cost_usd": 0.006395,
+     "dropped": 15,
+     "items": 29,
+     "kept": 14,
+     "stored": 0
+    },
+    "gdelt": {
+     "calls": 938,
+     "cost_usd": 0.057681,
+     "dropped": 762,
+     "items": 854,
+     "kept": 84,
+     "stored": 9
+    },
+    "google_news": {
+     "calls": 246,
+     "cost_usd": 0.024678,
+     "dropped": 23,
+     "items": 135,
+     "kept": 111,
+     "stored": 4
+    },
+    "local_news": {
+     "calls": 457,
+     "cost_usd": 0.044863,
+     "dropped": 49,
+     "items": 255,
+     "kept": 202,
+     "stored": 1
+    },
+    "national_feeds": {
+     "calls": 3,
+     "cost_usd": 0.000119,
+     "dropped": 3,
+     "items": 3,
+     "kept": 0,
+     "stored": 0
+    },
+    "warn_mn_letters": {
+     "calls": 2,
+     "cost_usd": 0.000325,
+     "dropped": 0,
+     "items": 1,
+     "kept": 1,
+     "stored": 0
+    }
+   },
+   "stored": 14
   },
   {
    "attempt": "1",
