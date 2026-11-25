@@ -178,7 +178,7 @@ class ArchiveMatchCheck(unittest.TestCase):
                 self.assertEqual(url.path, "/resume-score")
                 self.assertEqual(dict(urllib.parse.parse_qsl(url.query)), {
                     "utm_source": "ai-layoff-tracker", "utm_medium": "referral",
-                    "utm_campaign": campaign,
+                    "utm_campaign": campaign, "utm_content": "inline",
                 })
                 rel = re.search(r'<a\b[^>]*\brel="([^"]+)"', markup).group(1)
                 self.assertIn("nofollow", rel.split())

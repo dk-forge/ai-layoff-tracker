@@ -524,10 +524,10 @@ function alt_resume_cta_url($surface) {
  */
 function alt_resume_cta_lines() {
     return array(
-        array('Changing jobs?', 'Tailor your r&eacute;sum&eacute; to the role you want.'),
-        array('Laid off?', 'Tailor your r&eacute;sum&eacute; for the next role.'),
-        array('Returning to work?', 'Tailor your r&eacute;sum&eacute; to the job in front of you.'),
-        array('New grad or student?', 'Tailor your first r&eacute;sum&eacute; to the role.'),
+        array('Changing jobs?', 'Tailor your resume to the role you want.'),
+        array('Laid off?', 'Tailor your resume for the next role.'),
+        array('Returning to work?', 'Tailor your resume to the job in front of you.'),
+        array('New grad or student?', 'Tailor your first resume to the role.'),
     );
 }
 
@@ -547,7 +547,7 @@ function alt_resume_cta_html($surface, $seed = '') {
     return '<aside class="alt-resume-cta" aria-label="Resume help">'
         . '<b>' . $pick[0] . '</b> ' . $pick[1] . ' '
         . '<a href="' . esc_url(alt_resume_cta_url($surface)) . '" target="_blank" rel="noopener nofollow">'
-        . 'Try the AskTheRecruiter r&eacute;sum&eacute; tool</a></aside>';
+        . 'Try the Ask The Recruiter resume tool</a></aside>';
 }
 
 function alt_output_jsonld($blocks) {

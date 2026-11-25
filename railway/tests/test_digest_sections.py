@@ -46,7 +46,9 @@ class ResumeLine(unittest.TestCase):
                          f"'{URL}')")
         self.assertIn("Globex named 800 jobs", text)
         self.assertIn(URL, text)
-        self.assertIn(f'<a href="{URL}">Tailor your résumé to its openings</a>', html)
+        self.assertIn("Ask The Recruiter resume tool", text)
+        self.assertNotIn("AskTheRecruiter", text)
+        self.assertIn(f'<a href="{URL}">Tailor your resume to its openings</a>', html)
 
     def test_job_board_scans_never_fire(self):
         self.assertEqual(php("alt_digest_talent_resume_line(array(array("

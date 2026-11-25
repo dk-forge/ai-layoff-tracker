@@ -57,8 +57,8 @@ function alt_digest_talent_resume_line($candidates, $url) {
     if ($best === null || strpos($url, 'https://') !== 0) return array('', '');
     $lead = $best['company'] . ' named ' . number_format($best['jobs'], 0, '.', ',')
           . ' jobs in this period.';
-    $anchor = 'Tailor your résumé to its openings';
-    $rest = ' with the AskTheRecruiter résumé tool.';
+    $anchor = 'Tailor your resume to its openings';
+    $rest = ' with the Ask The Recruiter resume tool.';
     $h = function ($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); };
     $html = '<p data-alt="note">' . $h($lead) . ' <a href="' . $h($url) . '">'
           . $h($anchor) . '</a>' . $h($rest) . '</p>';
