@@ -57,7 +57,8 @@ def _run_php(body):
         "function esc_html($s) { return htmlspecialchars($s, ENT_QUOTES); }\n"
         "function esc_attr($s) { return htmlspecialchars($s, ENT_QUOTES); }\n"
         "function wp_http_validate_url($u) { return filter_var($u, FILTER_VALIDATE_URL) ? $u : false; }\n"
-        "function add_query_arg($a, $u) { return $u . (strpos($u, '?') === false ? '?' : '&') . http_build_query($a); }\n"
+        "function add_query_arg($a, $u, $url = null) { if ($url !== null) { $a = array($a => $u); $u = $url; } return $u . (strpos($u, '?') === false ? '?' : '&') . http_build_query($a); }\n"
+        "function sanitize_title($s) { return strtolower($s); }\n"
         "$GLOBALS['alt_test_tracker'] = false;\n"
         "function alt_company_index_is_request() { return $GLOBALS['alt_test_tracker']; }\n"
         "function alt_company_directory_is_request() { return false; }\n"
@@ -90,7 +91,27 @@ class TheLine(unittest.TestCase):
         self.assertEqual(parts.netloc, "asktherecruiter.com")
         self.assertEqual(parts.path, "/resume-score")
         self.assertEqual(q, {"utm_source": "ai-layoff-tracker", "utm_medium": "referral",
-                             "utm_campaign": "directory"})
+                             "utm_campaign": "directory", "utm_content": "inline"})
+
+    def test_optional_content_is_sanitized_and_default_urls_stay_unchanged(self):
+        default = _run_php("echo alt_atr_cta_url('x');")
+        tagged = _run_php("echo alt_atr_cta_url('x', 'Bad Content<b>');")
+        plain = urllib.parse.urlsplit(default)
+        content = urllib.parse.urlsplit(tagged)
+        self.assertEqual((plain.scheme, plain.netloc, plain.path),
+                         (content.scheme, content.netloc, content.path))
+        expected = {"utm_source": ["ai-layoff-tracker"], "utm_medium": ["referral"],
+                    "utm_campaign": ["x"]}
+        self.assertEqual(urllib.parse.parse_qs(plain.query), expected)
+        self.assertEqual(urllib.parse.parse_qs(content.query),
+                         dict(expected, utm_content=["badcontentb"]))
+
+    def test_facet_keeps_its_single_place_content(self):
+        html = _run_php("echo alt_atr_cta_facet_html('country', 'Germany');")
+        (url,) = _hrefs(html)
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+        self.assertEqual(query["utm_content"], ["germany"])
+        self.assertEqual(url.count("utm_content="), 1)
 
     def test_company_line_names_the_employer_as_a_condition(self):
         html = _run_php("echo alt_atr_cta_line_html('company_entry', 'Acme <b>Co</b>');")
@@ -120,6 +141,15 @@ class ThePhoneBar(unittest.TestCase):
 
     def test_renders_nothing_off_tracker_pages(self):
         self.assertEqual(_run_php("alt_atr_cta_sticky_bar();").strip(), "")
+
+    def test_tracker_bar_has_its_own_placement(self):
+        html = _run_php("$GLOBALS['alt_test_tracker'] = true; alt_atr_cta_sticky_bar();")
+        (url,) = _hrefs(html)
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+        self.assertEqual(query, {"utm_source": ["ai-layoff-tracker"],
+                                "utm_medium": ["referral"],
+                                "utm_campaign": ["sticky_bar"],
+                                "utm_content": ["sticky_bar"]})
 
     def test_bar_is_phone_only_dismissible_and_accessible(self):
         html = _run_php("$GLOBALS['alt_test_tracker'] = true; alt_atr_cta_sticky_bar();")
