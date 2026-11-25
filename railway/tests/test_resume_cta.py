@@ -138,11 +138,22 @@ class TaggedPerSurface(unittest.TestCase):
 
     def test_the_html_block_is_a_link_not_a_popup(self):
         html = _run_php("echo alt_resume_cta_html('report');")
-        self.assertIn("r&eacute;sum&eacute;", html)
+        self.assertIn("resume tool", html)
+        self.assertNotIn("r&eacute;sum&eacute;", html)
         self.assertIn("utm_campaign=report", html)
         self.assertIn('rel="noopener nofollow"', html)
         for popup in ("<script", "onload", "position:fixed", "dialog"):
             self.assertNotIn(popup, html)
+
+
+class PlainResumeCopy(unittest.TestCase):
+    def test_signup_surfaces_use_plain_resume(self):
+        for path in (MAIN, EMBED, PLUGIN / "includes" / "digest-sections.php"):
+            with self.subTest(path=path.name):
+                source = path.read_text(encoding="utf-8")
+                self.assertNotIn("r&eacute;sum&eacute;", source)
+                self.assertNotIn("&eacute;sum", source)
+                self.assertNotIn("r\u00e9sum\u00e9", source)
 
 
 class Placement(unittest.TestCase):
