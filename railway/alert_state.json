@@ -147,6 +147,11 @@
       "last": 1795206470,
       "subject": "CI RED: Live surface check \u2014 AssertionError: No headline moves without rows to explain it: United States jobs, all time: OPEN INCIDENT, opened 0d ago (2026-11-20T17:36:36Z): Worldw"
     },
+    "merge-train:main:12f4189e20ec3a3b": {
+      "first": 1795623589,
+      "last": 1795623589,
+      "subject": "CI RED: Merge train \u2014 merge train sync main: tests.yml dispatch UNKNOWN or FAILED: command failed (1): gh workflow run tests.yml..."
+    },
     "new-error-watch:fix-sentry-watch-query:228fa1d96faf886a": {
       "first": 1789615249,
       "last": 1789615249,
@@ -183,6 +188,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-25T09:14:30+00:00",
+  "updated_at": "2026-11-25T16:19:49+00:00",
   "version": 1
 }
