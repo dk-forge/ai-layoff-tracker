@@ -92,6 +92,11 @@
       "last": 1791216897,
       "subject": "CI RED: Depth source snapshot (test only) \u2014 nothing added to commit but untracked files present (use \"git add\" to track)"
     },
+    "erm-provenance-check:main:e959632802090c95": {
+      "first": 1795625325,
+      "last": 1795625325,
+      "subject": "CI RED: ERM provenance check \u2014 published ERM rows disagree with the country they were imported with (exit 1) - see the step above for the rows"
+    },
     "finish-line-weekly:main:a4c9bb7cd8144f4a": {
       "first": 1795037055,
       "last": 1795037055,
@@ -188,6 +193,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-25T16:19:49+00:00",
+  "updated_at": "2026-11-25T16:48:46+00:00",
   "version": 1
 }
