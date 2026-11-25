@@ -358,11 +358,12 @@ def cache_lifetime_overrun(cache_control):
     return max(0, uncapped - MAX_GRACE_S)
 
 
-def _open(url, ua, timeout=40):
+def _open(url, ua, timeout=40, use_cache=True):
     headers = {"User-Agent": ua}
     req = urllib.request.Request(url, headers=headers)
+    opener = blog_reads.urlopen if use_cache else urllib.request.urlopen
     try:
-        return blog_reads.urlopen(req, timeout=timeout)
+        return opener(req, timeout=timeout)
     except urllib.error.HTTPError as exc:
         # Bluehost's human gate does not use Set-Cookie. It returns HTTP 409
         # with a tiny script assigning a short-lived `humans_N=1` cookie, then
@@ -380,15 +381,32 @@ def _open(url, ua, timeout=40):
             raise
         retry = urllib.request.Request(
             url, headers={**headers, "Cookie": found.group(1)})
-        return blog_reads.urlopen(retry, timeout=timeout)
+        return opener(retry, timeout=timeout)
 
 
-def reader_view(url=PAGE_URL, timeout=40):
+def reader_view(url=PAGE_URL, timeout=40, use_cache=True):
     """Fetch exactly what a reader gets: bare URL, browser UA, NO cache buster.
 
     Do NOT add a query string here, ever. That is the whole point of the file.
+
+    `use_cache=False` is for `wait_for()`'s own polling loop ONLY. The shared
+    hourly cap added 2026-11-23 (blog_read_cache.py) treats a browser-UA read
+    of a public page as non-retainable (its `cacheable()` requires the bot UA
+    this module deliberately does not send), yet still blocks every later read
+    of that exact URL for the rest of the hour -- "repeated probes fail instead
+    of receiving fake fresh observations" (docs/PUBLIC_BLOG_READ_BUDGET.md).
+    That is correct for an incidental repeat read from some other job, and it
+    is fatal to THIS function's one legitimate repeat-read need: watching the
+    bare URL turn over after a deploy, up to --timeout seconds apart --interval
+    seconds. Measured 2026-11-25 (run 45582403663): the first poll succeeded,
+    cap_refusals then climbed on every poll after it, and "reader view
+    unreachable (blog read already attempted in this hour; no new request was
+    sent)" repeated until the 600s deadline -- the exact ReadLimited message,
+    not an outage. wait_for() is already bounded by its own --timeout/--interval
+    and runs once per deploy, so bypassing the shared cap here does not reopen
+    the load problem that cap exists for.
     """
-    with _open(url, BROWSER_UA, timeout) as resp:
+    with _open(url, BROWSER_UA, timeout, use_cache=use_cache) as resp:
         html = resp.read().decode("utf-8", "replace")
         headers = {k.lower(): v for k, v in resp.headers.items()}
     return ReaderView(version_in_html(html), build_in_html(html), headers)
@@ -581,7 +599,7 @@ def wait_for(expected, expected_build=None, timeout=600, interval=15, log=print)
     last = None
     while True:
         try:
-            view = reader_view()
+            view = reader_view(use_cache=False)
             last = (view.version, view.build)
             if view.version == expected and (not expected_build or view.build == expected_build):
                 return time.monotonic() - started

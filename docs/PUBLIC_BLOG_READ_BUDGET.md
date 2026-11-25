@@ -40,6 +40,18 @@ repeated probes fail instead of receiving fake fresh observations. Requests and
 urllib use separate representation variants in one URL budget. Browser-user-agent
 public probes also obey the cap. No stale response replaces a transport failure.
 
+One deliberate exception: `reader_freshness.wait_for()` (the deploy's own
+"has this reached readers yet" poll) reads the bare tracker URL with a browser
+UA several times in one run, by design, to watch a shared cache turn over.
+Routing that loop through this cap (2026-11-23, #714) meant its first poll
+spent the hourly slot and every later poll in the SAME run read ReadLimited,
+which `wait_for()` logs as "reader view unreachable" and retries until its own
+timeout -- not an outage, the cap refusing the very check built to watch for
+one. `reader_view(url, use_cache=False)` opts that one bounded, --timeout
+limited, once-per-deploy loop out of the shared cache entirely; every other
+caller (`check()`, `check_all()`, ops_status.py) keeps the default and stays
+capped.
+
 The common retry/host-call helpers, direct Python clients, public checks and
 explicit workflow GETs use the policy. External hosts are unaffected. The CLI
 reads keys from a named environment variable, removes stale output before reading
