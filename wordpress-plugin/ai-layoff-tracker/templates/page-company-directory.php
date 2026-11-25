@@ -45,8 +45,8 @@ $alt_verif = array(
         verified, not a complete employment history for this employer.
     </p>
 
-    <?php // ATR sign-up line (includes/atr-signup-cta.php). function_exists: FTP race guard.
-          if (function_exists('alt_atr_cta_line_html')) echo alt_atr_cta_line_html('company_entry', $alt_label);
+    <?php // Layoff-to-resume line (todo#2983, includes/atr-signup-cta.php). function_exists: FTP race guard.
+          if (function_exists('alt_layoff_resume_line_html')) echo alt_layoff_resume_line_html($alt_label, $alt_company['slug'] ?? '');
           // The same employer in the hiring tracker (includes/cross-links.php).
           if (function_exists('alt_cross_links_html')) echo alt_cross_links_html('company', $alt_company['slug'] ?? '', $alt_label); ?>
 
