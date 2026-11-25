@@ -258,7 +258,24 @@ def main(argv=None):
     ap.add_argument("--site", default=SITE)
     a = ap.parse_args(argv)
 
-    rows = fetch_rows(a.site)
+    try:
+        rows = fetch_rows(a.site)
+    except Exception as exc:                                  # noqa: BLE001
+        # A transport error or a sustained 429/5xx is UNKNOWN, not a crash.
+        # Letting it propagate exits with Python's bare 1, which the
+        # workflow's case statement (0/3 are the only sanctioned non-pass
+        # codes) falls through to its wildcard branch and misreports as a
+        # FAIL ("rows disagree with the country they were imported with")
+        # when no row was ever compared. endpoint_check.check() and this
+        # module's own judge() already draw this line; fetch_rows() just
+        # wasn't behind it.
+        detail = f"could not fetch ERM rows from {a.site}: {exc.__class__.__name__}: {exc}"
+        if a.json:
+            print(json.dumps({"state": UNKNOWN, "detail": detail}, indent=2))
+        else:
+            print(f"{UNKNOWN.upper()}: {detail}")
+        return 3
+
     record = measurement_from(rows)
     erm = [r for r in rows if (r.get("source_type") or "") == "erm"]
     bad, unreadable = contradictions(rows)
