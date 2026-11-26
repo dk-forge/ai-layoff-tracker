@@ -167,11 +167,6 @@
       "last": 1795245639,
       "subject": "CI RED: Review held rows (two referees) \u2014 spend $0.0195; 1 row(s) left held"
     },
-    "vps:offline:ai-layoff-tracker": {
-      "first": 1795663830,
-      "last": 1795663830,
-      "subject": "VPS runner offline: ai-layoff-tracker"
-    },
     "vps:offline:asktherecruiter-sandbox": {
       "first": 1795663833,
       "last": 1795663833,
@@ -198,6 +193,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-26T03:30:33+00:00",
+  "updated_at": "2026-11-26T04:29:56+00:00",
   "version": 1
 }
