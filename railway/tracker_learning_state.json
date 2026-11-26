@@ -1190,6 +1190,24 @@
       "rules": 0,
       "unknown": 6,
       "unmatched": 7
+    },
+    {
+      "candidates": 23,
+      "causes": {
+        "not_wired": 9,
+        "unclassified": 1,
+        "vocabulary_gap": 3
+      },
+      "date": "2026-11-26",
+      "dropped": 0,
+      "independent_recall_pct": 43.5,
+      "matched": 10,
+      "method": "m5",
+      "recall_high_pct": 63.2,
+      "recall_low_pct": 25.6,
+      "rules": 2,
+      "unknown": 0,
+      "unmatched": 13
     }
   ],
   "quiet_runs": 1
