@@ -1,6 +1,16 @@
 {
   "editions": [
     {
+      "date": "2026-11-27",
+      "kind": "daily",
+      "path": "2026/11/2026-11-27-daily.html",
+      "sections": [
+        "talent"
+      ],
+      "slug": "2026-11-27-daily",
+      "subject": "\ud83d\ude80 Who's hiring: Cloudflare, Neurophos, Yext + 3 more \u00b7 Nov 27"
+    },
+    {
       "date": "2026-11-26",
       "kind": "daily",
       "path": "2026/11/2026-11-26-daily.html",
