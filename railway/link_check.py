@@ -54,14 +54,25 @@ PUBLIC_PAGES = (
 )
 
 
+#: blog_read_cache.ReadLimited's exact, stable message (railway/blog_read_cache.py)
+#: when the shared hourly per-URL budget was already spent by SOME caller this
+#: hour -- not necessarily this one. A deliberate refusal to ask again, not a
+#: transport failure, so it must never read as "the page is down."
+_RATE_CAPPED = "blog read already attempted in this hour; no new request was sent"
+
+
 def _status(url, headers, timeout=25):
-    """Return an int HTTP status, or 0 on transport failure. Never raises."""
+    """Return an int HTTP status, 0 on a real transport failure, or None when
+    the hourly read budget for this URL was already spent elsewhere this run
+    (we deliberately did not ask again -- never raises)."""
     try:
         r = blog_reads.get(url, getter=requests.get, headers=headers, timeout=timeout, allow_redirects=True, stream=True)
         code = r.status_code
         r.close()
         return code
-    except Exception:
+    except Exception as exc:
+        if _RATE_CAPPED in str(exc):
+            return None
         return 0
 
 
@@ -111,15 +122,27 @@ def _report(status, entries, detail):
 
 
 def check_pages():
-    """Every public page must be 200. Returns the list of broken ones."""
+    """Every public page must be 200. Returns (broken, skipped) lists.
+
+    `skipped` holds paths the hourly public-page read budget had already spent
+    THIS RUN (same URL, read by some other job in the last hour) before we got
+    to it -- UNKNOWN, not BROKEN. Another caller's own successful read already
+    proves the page answers; counting our declined re-check as "down" would be
+    exactly the self-inflicted false alarm this module exists to avoid.
+    """
     broken = []
+    skipped = []
     for path in PUBLIC_PAGES:
         code = _status(f"{SITE}{path}?cb=linkcheck", BROWSER_UA)
+        if code is None:
+            print(f"  SKIP    -    {path}  (hourly read budget already spent this run)")
+            skipped.append(path)
+            continue
         mark = "ok" if code == 200 else "BROKEN"
         print(f"  {mark:<6} {code}  {path}")
         if code != 200:
             broken.append((path, code))
-    return broken
+    return broken, skipped
 
 
 def check_sources():
@@ -142,6 +165,10 @@ def check_sources():
     broken = []
     for u in urls:
         code = _status(u, BROWSER_UA, timeout=20)
+        if code is None:
+            # Hourly read budget already spent this URL this run elsewhere;
+            # unverified, not counted as broken (see check_pages).
+            continue
         # 200/redirect/ 401-403 (bot walls, still live) count as reachable;
         # 404/410/0 (gone/dead) count as broken.
         if code in (0, 404, 410) or code >= 500:
@@ -155,11 +182,14 @@ def main():
         print("WP_SITE_URL required")
         return 1
     print("PUBLIC PAGES:")
-    broken_pages = check_pages()
+    broken_pages, skipped_pages = check_pages()
     sampled, broken_src, broken_list = check_sources()
 
+    checked_pages = len(PUBLIC_PAGES) - len(skipped_pages)
     rot = round(100.0 * broken_src / sampled, 1) if sampled else 0.0
-    detail = (f"{len(PUBLIC_PAGES) - len(broken_pages)}/{len(PUBLIC_PAGES)} public pages OK; "
+    detail = (f"{checked_pages - len(broken_pages)}/{checked_pages} public pages OK"
+              + (f" ({len(skipped_pages)} not checked this run - hourly read budget "
+                 "already spent)" if skipped_pages else "") + "; "
               f"source-link sample {sampled - broken_src}/{sampled} reachable "
               f"({rot}% rot, backstopped by Wayback archiving)")
     print("\n" + detail)

@@ -27,10 +27,11 @@ import link_check
 class DedupeKeyCarried(unittest.TestCase):
     """The alert must name a cause -- proved by mutation, not just presence."""
 
-    def _run_main(self, broken_pages, broken_src=(0, 0, [])):
+    def _run_main(self, broken_pages, broken_src=(0, 0, []), skipped_pages=()):
         calls = {"notify": [], "resolve": []}
         with mock.patch.object(link_check, "SITE", "https://example.test"), \
-             mock.patch.object(link_check, "check_pages", return_value=broken_pages), \
+             mock.patch.object(link_check, "check_pages",
+                               return_value=(broken_pages, list(skipped_pages))), \
              mock.patch.object(link_check, "check_sources", return_value=broken_src), \
              mock.patch.object(link_check, "_report"), \
              mock.patch("ops_notify.notify",
@@ -77,13 +78,86 @@ class DedupeKeyCarried(unittest.TestCase):
             calls = []
             with mock.patch.object(link_check, "SITE", "https://example.test"), \
                  mock.patch.object(link_check, "check_pages",
-                                   return_value=[("/ai-layoff-tracker/", 500)]), \
+                                   return_value=([("/ai-layoff-tracker/", 500)], [])), \
                  mock.patch.object(link_check, "check_sources", return_value=(0, 0, [])), \
                  mock.patch.object(link_check, "_report"), \
                  mock.patch("ops_notify.notify",
                             side_effect=lambda *a, **kw: calls.append(kw) or True):
                 link_check.main()
             self.assertNotIn("dedupe_key", calls[0])
+
+
+class RateCappedPagesAreNotBroken(unittest.TestCase):
+    """The hourly public-page read budget (blog_read_cache.py) is shared
+    across every caller that reads the live site, not just this job -- so a
+    page some OTHER job already read this hour can be declined outright, not
+    re-fetched, when this job asks again. That decline is
+    `blog_read_cache.ReadLimited`, which `blog_read_cache.get()` re-raises as
+    a plain `requests.RequestException`. It must never be reported as the
+    page being down: on 2026-11-24 (run 45415329807) exactly the two pages
+    published_figures.py also reads independently (the home page, the press
+    page) came back "BROKEN 0" and fired a false outage alert while every
+    other page, and the live site, were healthy the whole time.
+    """
+
+    def test_a_budget_refusal_is_skipped_not_broken(self):
+        capped_path = link_check.PUBLIC_PAGES[0]
+
+        class FakeResponse:
+            status_code = 200
+
+            def close(self):
+                pass
+
+        capped_url = f"{link_check.SITE}{capped_path}?cb=linkcheck"
+
+        def fake_get(url, **kwargs):
+            if url == capped_url:
+                raise Exception(link_check._RATE_CAPPED)
+            return FakeResponse()
+
+        with mock.patch.object(link_check.blog_reads, "get", side_effect=fake_get):
+            broken, skipped = link_check.check_pages()
+        self.assertEqual(broken, [], "a budget refusal must never read as BROKEN")
+        self.assertEqual(skipped, [capped_path])
+
+    def test_a_real_transport_failure_is_still_broken(self):
+        bad_path = link_check.PUBLIC_PAGES[0]
+
+        class FakeResponse:
+            status_code = 200
+
+            def close(self):
+                pass
+
+        bad_url = f"{link_check.SITE}{bad_path}?cb=linkcheck"
+
+        def fake_get(url, **kwargs):
+            if url == bad_url:
+                raise Exception("Connection refused")
+            return FakeResponse()
+
+        with mock.patch.object(link_check.blog_reads, "get", side_effect=fake_get):
+            broken, skipped = link_check.check_pages()
+        self.assertEqual(broken, [(bad_path, 0)])
+        self.assertEqual(skipped, [])
+
+    def test_skipped_pages_do_not_trigger_an_alert_or_block_recovery(self):
+        calls = {"notify": [], "resolve": []}
+        with mock.patch.object(link_check, "SITE", "https://example.test"), \
+             mock.patch.object(link_check, "check_pages", return_value=(
+                 [], ["/ai-layoff-tracker/", "/ai-layoff-tracker/press/"])), \
+             mock.patch.object(link_check, "check_sources", return_value=(0, 0, [])), \
+             mock.patch.object(link_check, "_report"), \
+             mock.patch("ops_notify.notify",
+                        side_effect=lambda *a, **kw: calls["notify"].append(kw) or True), \
+             mock.patch("ops_notify.resolve",
+                        side_effect=lambda *a, **kw: calls["resolve"].append(a) or True):
+            exit_code = link_check.main()
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(calls["notify"], [],
+                          "no page was found broken; a shared budget refusal is not an outage")
+        self.assertEqual(len(calls["resolve"]), 1)
 
 
 if __name__ == "__main__":
