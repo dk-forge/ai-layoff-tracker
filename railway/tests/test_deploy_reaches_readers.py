@@ -24,6 +24,7 @@ Comments are stripped before matching, and header values are extracted from the
 directive itself, so nothing here can pass because the right string appears in
 prose near the wrong code.
 """
+import os
 import re
 import sys
 import unittest
@@ -695,6 +696,128 @@ class TheBuildStampTiesTheBodyToTheBuild(unittest.TestCase):
                          reader_freshness.checkout_build_stamp(PLUGIN),
                          "the PHP that stamps the page and the Python that grades it "
                          "disagree about what this build is")
+
+
+class TheWaitLoopSurvivesTheSharedHourlyReadCap(unittest.TestCase):
+    """MEASURED 2026-11-25, run 45582403663. blog_read_cache.py (2026-11-23,
+    #714) routed reader_freshness._open() through the shared hourly cap on
+    public page reads. That cap's cacheable() requires the bot UA
+    (`ailayofftracker/1.0`); reader_view() deliberately sends a browser UA
+    instead, so its response is never retained -- and the cap still blocks
+    every LATER read of that exact URL for the rest of the hour regardless
+    ("repeated probes fail instead of receiving fake fresh observations",
+    docs/PUBLIC_BLOG_READ_BUDGET.md). wait_for() exists specifically to poll
+    the bare URL repeatedly, up to --timeout seconds apart --interval
+    seconds, to detect propagation. The real deploy failed with the ReadLimited
+    message verbatim: "reader view unreachable (blog read already attempted
+    in this hour; no new request was sent); retrying", forty times, until the
+    600s deadline -- not an outage, this module's own cap refusing itself."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+        self._real_dir = os.environ.get("ALT_BLOG_CACHE_DIR")
+        os.environ["ALT_BLOG_CACHE_DIR"] = self.tmp
+
+    def tearDown(self):
+        if self._real_dir is None:
+            os.environ.pop("ALT_BLOG_CACHE_DIR", None)
+        else:
+            os.environ["ALT_BLOG_CACHE_DIR"] = self._real_dir
+
+    # eligible()/cacheable() only ever route through the cap for THIS host
+    # (authenticated_blog_reads.blog_host()); any other host falls straight
+    # through to a real network call, which is not what these tests probe.
+    URL_A = "https://asktherecruiter.com/blog/cap-check-a/"
+    URL_B = "https://asktherecruiter.com/blog/cap-check-b/"
+
+    @staticmethod
+    def _page(version, build="abcdef12"):
+        return (
+            "<html><link href=\"/wp-content/plugins/ai-layoff-tracker/assets/"
+            f"layoffs.css?ver={version}.1\">"
+            "<link href=\"/wp-content/plugins/ai-layoff-tracker/assets/"
+            f"layoffs.js?ver={version}.1\">"
+            f"<!-- alt-build ver={version} build={build} --></html>"
+        ).encode()
+
+    @classmethod
+    def _response_object(cls, version, build="abcdef12"):
+        """What urllib.request.urlopen() itself returns: an object, not the
+        (status, headers, body) tuple blog_read_cache's _open_one hands back.
+        Both stand in for the live host, so both must be stubbed."""
+        from email.message import Message
+        from urllib.response import addinfourl
+        message = Message()
+        message["content-type"] = "text/html"
+        resp = addinfourl(BytesIO(cls._page(version, build)), message,
+                          "https://asktherecruiter.com/blog/", 200)
+        resp.headers = message
+        return resp
+
+    def test_a_second_default_read_of_the_same_url_is_capped(self):
+        """The cap's intended shape, preserved: a SINGLE process reading the
+        same public URL twice in one hour without opting out still gets
+        ReadLimited. check()/check_all() (ops_status.py's one-shot use) keep
+        this protection; only wait_for()'s own loop opts out of it."""
+        from blog_read_cache import ReadLimited
+        with mock.patch("blog_read_cache._open_one",
+                        return_value=(200, {"content-type": "text/html"}, self._page("2.20.368"))):
+            reader_freshness.reader_view(self.URL_A)
+            with self.assertRaises(ReadLimited):
+                reader_freshness.reader_view(self.URL_A)
+
+    def test_wait_for_s_own_polling_is_not_capped_by_a_prior_read(self):
+        """The fix: wait_for() asks reader_view(use_cache=False), so its
+        repeated polling of the bare URL is never blocked by the shared cap --
+        not even by a read of the SAME url that already happened and was not
+        retained, which is exactly the shape of the 2026-11-25 failure."""
+        with mock.patch("blog_read_cache._open_one",
+                        return_value=(200, {"content-type": "text/html"}, self._page("2.20.368"))):
+            reader_freshness.reader_view(self.URL_B)  # spends the hourly slot, uncached
+        with mock.patch.object(reader_freshness.urllib.request, "urlopen",
+                               return_value=self._response_object("2.20.368")):
+            # Without the fix this next call raises ReadLimited exactly like
+            # the real deploy run did; with it, it must succeed.
+            view = reader_freshness.reader_view(self.URL_B, use_cache=False)
+        self.assertEqual(view.version, "2.20.368")
+
+    def test_wait_for_itself_uses_the_bypass(self):
+        import inspect
+        src = inspect.getsource(reader_freshness.wait_for)
+        self.assertIn("reader_view(use_cache=False)", src,
+                      "wait_for()'s polling loop must opt out of the shared "
+                      "hourly read cap, or every deploy repeats the "
+                      "2026-11-25 failure after its first successful poll")
+
+    def test_wait_for_end_to_end_survives_many_polls_of_one_url(self):
+        """The actual reproduction: run the real wait_for() loop long enough
+        to need several polls of the bare URL -- the exact shape that read
+        ReadLimited on every attempt after the first in run 45582403663."""
+        calls = []
+
+        def origin(*a, **k):
+            return ("2.20.368", "abcdef12")
+
+        def respond(*a, **k):
+            calls.append(1)
+            version = "2.20.1" if len(calls) < 3 else "2.20.368"
+            return self._response_object(version)
+
+        real_origin = reader_freshness.origin_build
+        reader_freshness.origin_build = origin
+        try:
+            with mock.patch.object(reader_freshness.urllib.request, "urlopen",
+                                   side_effect=respond):
+                delay = reader_freshness.wait_for(
+                    "2.20.368", expected_build="abcdef12",
+                    timeout=5, interval=0, log=lambda *a: None)
+        finally:
+            reader_freshness.origin_build = real_origin
+        self.assertIsNotNone(delay, "wait_for() must reach the expected version "
+                                    "instead of being starved by its own read cap")
+        self.assertGreaterEqual(len(calls), 3)
 
 
 class TheCheckDoesNotFillTheCacheItIsMeasuring(unittest.TestCase):
