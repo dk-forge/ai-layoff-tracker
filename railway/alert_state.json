@@ -182,6 +182,11 @@
       "last": 1795836605,
       "subject": "VPS runner offline: ai-layoff-tracker"
     },
+    "vps:offline:talent-intelligence-tracker": {
+      "first": 1795836607,
+      "last": 1795836607,
+      "subject": "VPS runner offline: talent-intelligence-tracker"
+    },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
       "last": 1794830557,
@@ -203,6 +208,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-28T03:30:05+00:00",
+  "updated_at": "2026-11-28T03:30:08+00:00",
   "version": 1
 }
