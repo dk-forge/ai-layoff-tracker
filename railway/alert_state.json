@@ -167,11 +167,6 @@
       "last": 1795245639,
       "subject": "CI RED: Review held rows (two referees) \u2014 spend $0.0195; 1 row(s) left held"
     },
-    "sandbox-main-green-check:main:604d3a86309a507c": {
-      "first": 1795774683,
-      "last": 1795774683,
-      "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: frontend-ci.yml FAIL (newest completed run is failure on a0df726d)"
-    },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
       "last": 1794830557,
@@ -193,6 +188,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-28T08:41:05+00:00",
+  "updated_at": "2026-11-28T10:16:21+00:00",
   "version": 1
 }
