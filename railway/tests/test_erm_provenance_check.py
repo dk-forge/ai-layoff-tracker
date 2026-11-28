@@ -186,6 +186,45 @@ class WiredIntoTheOneRegistry(unittest.TestCase):
         self.assertFalse(inv.reads_live_data)
 
 
+class MainOnAFetchFailure(unittest.TestCase):
+    """A sustained transport error (a 429, a timeout) is UNKNOWN, never a crash.
+
+    `_get` already retries; once it still gives up, main() must land on exit 3
+    through the same PASS/FAIL/UNKNOWN vocabulary judge() uses, not propagate
+    the exception. An uncaught exception exits with Python's bare 1, which
+    erm-provenance-check.yml's case statement falls through to its wildcard
+    branch and reports as "rows disagree with the country they were imported
+    with" — a FAIL message for a run that never compared a single row.
+    """
+
+    def test_a_fetch_failure_exits_unknown_not_a_crash(self):
+        real_fetch_rows = epc.fetch_rows
+
+        def boom(site=epc.SITE):
+            raise RuntimeError("https://example.invalid/query :: HTTP Error 429: "
+                               "Too Many Requests")
+        epc.fetch_rows = boom
+        try:
+            rc = epc.main(["--json"])
+        finally:
+            epc.fetch_rows = real_fetch_rows
+        self.assertEqual(rc, 3)
+
+    def test_a_fetch_failure_does_not_write_a_measurement(self):
+        real_fetch_rows = epc.fetch_rows
+        epc.fetch_rows = lambda site=epc.SITE: (_ for _ in ()).throw(
+            RuntimeError("HTTP Error 429: Too Many Requests"))
+        path = Path(tempfile.mkdtemp()) / "m.json"
+        try:
+            rc = epc.main(["--write", "--measurement-path", str(path)])
+        finally:
+            epc.fetch_rows = real_fetch_rows
+        self.assertEqual(rc, 3)
+        self.assertFalse(path.exists(),
+                         "a failed fetch must not overwrite the committed "
+                         "measurement with nothing")
+
+
 class TheCommittedFileIsReal(unittest.TestCase):
 
     def test_the_repos_own_measurement_parses_and_is_judgeable(self):
