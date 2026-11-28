@@ -177,6 +177,11 @@
       "last": 1795774683,
       "subject": "CI RED: Sandbox main green check \u2014 error: main is NOT verifiably green: frontend-ci.yml FAIL (newest completed run is failure on a0df726d)"
     },
+    "vps:offline:ai-layoff-tracker": {
+      "first": 1795836605,
+      "last": 1795836605,
+      "subject": "VPS runner offline: ai-layoff-tracker"
+    },
     "weekly-health-digest-autonomy-tripwire:main:29a34609a3008b92": {
       "first": 1794830557,
       "last": 1794830557,
@@ -198,6 +203,6 @@
       "subject": "CI RED: zz exposure probe (temporary, branch only) \u2014 error: failed to push some refs to 'https://github.com/dk-forge/ai-layoff-tracker'"
     }
   },
-  "updated_at": "2026-11-27T10:18:04+00:00",
+  "updated_at": "2026-11-28T03:30:05+00:00",
   "version": 1
 }
